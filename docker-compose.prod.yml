@@ -1,0 +1,52 @@
+# ─────────────────────────────────────────────────────────────────────────
+# Compose PROD-like — construit et lance les apps en conteneur + Postgres.
+# Sert de référence de déploiement (VPS/CI) et de test d'intégration des images.
+#
+#   cp .env.example .env            # renseigner les secrets
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Chaque nouvelle app = un service supplémentaire pointant vers son Dockerfile.
+# ─────────────────────────────────────────────────────────────────────────
+name: daromsart-prod
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-invoiceflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-invoiceflow}
+      POSTGRES_DB: ${POSTGRES_DB:-invoiceflow}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-invoiceflow}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  invoiceflow-ai:
+    build:
+      context: .
+      dockerfile: apps/invoiceflow-ai/Dockerfile
+    image: daromsart/invoiceflow-ai:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # La base est jointe par le nom de service du réseau compose.
+      DATABASE_URL: postgresql://${POSTGRES_USER:-invoiceflow}:${POSTGRES_PASSWORD:-invoiceflow}@postgres:5432/${POSTGRES_DB:-invoiceflow}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-change-me}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      RESEND_WEBHOOK_SECRET: ${RESEND_WEBHOOK_SECRET:-}
+      EMAIL_FROM: ${EMAIL_FROM:-InvoiceFlow <no-reply@example.com>}
+      STORAGE_DRIVER: ${STORAGE_DRIVER:-fs}
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:
+    name: daromsart_prod_pgdata

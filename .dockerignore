@@ -1,0 +1,20 @@
+# Contexte de build = racine du monorepo. On exclut tout ce qui est lourd,
+# régénéré, ou sensible. `turbo prune` reconstruit un sous-ensemble propre.
+**/node_modules
+**/.next
+**/dist
+**/out
+**/.turbo
+**/coverage
+**/test-results
+**/playwright-report
+.storage
+.git
+.github
+**/.env
+**/.env.*
+!**/.env.example
+**/*.log
+plans
+documents
+**/.DS_Store
