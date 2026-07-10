@@ -1,0 +1,100 @@
+/**
+ * Tokens de design Daromsart — source de vérité partagée par toutes les apps.
+ * Format ShadCN : variables HSL sans la fonction hsl() (composées dans le preset
+ * Tailwind via `hsl(var(--token))`). Palette inspirée du template Vuexy.
+ *
+ * Import : `import "@daromsart/theme/tokens.css";` dans le layout racine de l'app.
+ */
+
+:root {
+  /* Surfaces */
+  --background: 260 22% 98%;
+  --foreground: 252 13% 28%;
+  --card: 0 0% 100%;
+  --card-foreground: 252 13% 28%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 252 13% 28%;
+
+  /* Marque */
+  --primary: 249 84% 67%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 250 20% 96%;
+  --secondary-foreground: 252 13% 28%;
+
+  --muted: 250 20% 96%;
+  --muted-foreground: 255 6% 45%;
+
+  --accent: 250 20% 96%;
+  --accent-foreground: 252 13% 28%;
+
+  /* États sémantiques */
+  --destructive: 0 78% 62%;
+  --destructive-foreground: 0 0% 100%;
+  --success: 147 67% 47%;
+  --success-foreground: 0 0% 100%;
+  --warning: 29 100% 63%;
+  --warning-foreground: 24 30% 15%;
+  --info: 187 100% 45%;
+  --info-foreground: 0 0% 100%;
+
+  /* Traits & focus */
+  --border: 250 18% 91%;
+  --input: 250 18% 91%;
+  --ring: 249 84% 67%;
+
+  /* Graphiques */
+  --chart-1: 249 84% 67%;
+  --chart-2: 147 67% 47%;
+  --chart-3: 29 100% 63%;
+  --chart-4: 187 100% 45%;
+  --chart-5: 0 78% 62%;
+
+  /* Rayon (≈10px) */
+  --radius: 0.625rem;
+
+  /* Polices (surchargées par next/font dans l'app) */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+}
+
+.dark {
+  --background: 229 24% 19%;
+  --foreground: 250 20% 92%;
+  --card: 228 22% 24%;
+  --card-foreground: 250 20% 92%;
+  --popover: 228 22% 24%;
+  --popover-foreground: 250 20% 92%;
+
+  --primary: 249 84% 67%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 228 18% 30%;
+  --secondary-foreground: 250 20% 92%;
+
+  --muted: 228 18% 28%;
+  --muted-foreground: 250 12% 68%;
+
+  --accent: 228 18% 30%;
+  --accent-foreground: 250 20% 92%;
+
+  --destructive: 0 78% 62%;
+  --destructive-foreground: 0 0% 100%;
+  --success: 147 63% 47%;
+  --success-foreground: 0 0% 100%;
+  --warning: 29 100% 63%;
+  --warning-foreground: 24 30% 15%;
+  --info: 187 100% 45%;
+  --info-foreground: 0 0% 100%;
+
+  --border: 228 16% 32%;
+  --input: 228 16% 32%;
+  --ring: 249 84% 67%;
+
+  --chart-1: 249 84% 70%;
+  --chart-2: 147 63% 52%;
+  --chart-3: 29 100% 63%;
+  --chart-4: 187 90% 50%;
+  --chart-5: 0 78% 65%;
+}

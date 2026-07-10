@@ -1,0 +1,29 @@
+# Ledger — Hypothèses & décisions d'architecte
+
+Toute info manquante a été tranchée ici. Opus applique ces décisions sans re-questionner.
+Si une hypothèse s'avère fausse en cours de build : corriger ici + noter l'impact, puis continuer.
+
+| # | Sujet | Hypothèse retenue | Justification |
+|---|-------|-------------------|---------------|
+| H1 | Emplacement de l'app | L'app vit dans `apps/invoiceflow-ai/` du monorepo `daromsart_agency` (le chemin `~/Project/invoiceflow-ai` n'existe pas ; la consigne monorepo prime). | Consigne "TRÈS IMPORTANT" du brief. |
+| H2 | Vuexy vs ShadCN | Vuexy (`~/Project/vuexy`) est un template **MUI**, or la stack impose ShadCN + Tailwind. Vuexy sert de **référence visuelle et UX** (layout vertical nav, densité, cards, tableaux, wizard) ; l'implémentation est 100 % ShadCN via `@daromsart/ui`. Aucun import MUI. | Incompatibilité MUI/ShadCN ; la stack est non négociable. |
+| H3 | Base de données | PostgreSQL ≥ 15 (local via Docker Compose en dev, `DATABASE_URL` en prod). Drizzle ORM + drizzle-kit migrations. | Standard production, requis par Better Auth + Drizzle. |
+| H4 | Multi-tenant | Outil **interne** : 1 seule organisation, mais le modèle garde une table `organizations` (toutes les entités portent `organization_id`). Coût quasi nul, ouvre le multi-tenant plus tard. | "Pensé production, pas démo". |
+| H5 | Devise & locale | EUR uniquement, locale `fr-FR`, montants stockés en **centimes (integer)**, TVA française (0 %, 5.5 %, 10 %, 20 %) configurable dans les paramètres. | Marché FR implicite (facture/devis/mentions). |
+| H6 | Numérotation | Séquentielle sans trou, par type et par année : `FAC-2026-0001`, `DEV-2026-0001`, `AV-2026-0001`. Format configurable (préfixe + padding). Attribuée à l'**émission** (pas au brouillon), via table `number_sequences` + verrou transactionnel. | Obligation légale FR (séquence continue). |
+| H7 | Immutabilité facture | Une facture émise est immuable. Correction = avoir (credit note) référençant la facture d'origine. | Conformité FR. |
+| H8 | Génération PDF | `@react-pdf/renderer` côté serveur (route handler Node runtime). Pas de Puppeteer (lourd en déploiement). Rendu piloté par le modèle de document (template). | Serverless-friendly, déterministe. |
+| H9 | Signature | Signature électronique **simple** : le client signe le devis sur une page publique tokenisée (canvas signature pad) ; on stocke image PNG + nom + email + IP + user-agent + horodatage + SHA-256 du PDF signé. Ce n'est PAS une signature eIDAS avancée. | Suffisant pour des devis internes ; niveau supérieur = prestataire externe, hors scope. |
+| H10 | QR codes | 2 usages : (a) **QR de paiement EPC** (virement SEPA : IBAN, BIC, montant, référence) sur le PDF de facture si IBAN renseigné ; (b) **QR de lien public** (URL `/p/...`) sur devis et factures. Lib : `qrcode` (npm), génération SVG/PNG côté serveur. | Les 2 interprétations plausibles de "génération de qrcode" sont couvertes. |
+| H11 | Stockage fichiers | Abstraction `@daromsart/storage` avec 2 drivers : filesystem local (`.storage/` en dev) et S3-compatible (R2/S3, env `STORAGE_*`). Stocke : logos, images de signature, PDF signés archivés. Les PDF non signés sont générés à la volée (pas stockés). | Production sans dépendance dure à un vendor. |
+| H12 | Emails | Resend + React Email. Domaine d'envoi vérifié supposé (`EMAIL_FROM`). Webhook Resend (`/api/webhooks/resend`) pour delivered/opened/bounced. En dev : `RESEND_API_KEY` de test + preview React Email. | Stack imposée. |
+| H13 | Auth | Better Auth, email + mot de passe, **inscriptions publiques désactivées** : les utilisateurs entrent par invitation (email). Rôles : `admin`, `member`. Reset password par email. Pas d'OAuth (outil interne). | Interne = surface minimale. |
+| H14 | Statuts devis | `draft → sent → viewed → signed | refused | expired` (+ `invoiced` après conversion). Expiration = date de validité dépassée, calculée (cron non requis : évaluée à la lecture + job optionnel). | Cycle de vie complet minimal. |
+| H15 | Statuts facture | `draft → issued → sent → viewed → partially_paid → paid` ; `overdue` = calculé (échéance dépassée & non payée) ; `cancelled` uniquement via avoir total. | Idem. |
+| H16 | Tests | Vitest (unitaires : totaux, numérotation, EPC QR) + Playwright (e2e smoke sur les parcours critiques). Chaque story liste ses tests = critères d'acceptation. | "Critères d'acceptation = tests". |
+| H17 | Thème partagé | `@daromsart/theme` = tokens CSS variables + preset Tailwind consommés par **toutes** les apps du monorepo (invoiceflow-ai, documents, futures). Une seule source de vérité couleur/typo/radius/dark-mode. | Consigne "tous les apps partagent un même thème". |
+| H18 | Dossier `documents/` | Vide actuellement. Réservé : future app à migrer sous `apps/documents`. Le scaffold monorepo ne le touche pas. | Constat repo. |
+| H19 | Gestionnaire de paquets | pnpm workspaces + Turborepo. Node ≥ 20. | Standard monorepo Next.js. |
+| H20 | i18n | UI en français uniquement (pas de framework i18n). Textes centralisés par module, extraction i18n possible plus tard. | Outil interne FR ; YAGNI. |
+| H21 | Mentions légales PDF | Pied de facture : mentions FR (pénalités de retard, indemnité forfaitaire 40 €, escompte, TVA non applicable art. 293 B si franchise). Configurables dans Paramètres, valeurs par défaut fournies. | Conformité FR. |
+| H22 | Relances | Relance manuelle (bouton "Relancer" sur facture en retard, email pré-rempli). Relances automatiques = hors scope V1, colonne prête (`last_reminder_at`). | Minimal mais complet. |

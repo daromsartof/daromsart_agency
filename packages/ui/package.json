@@ -1,0 +1,60 @@
+{
+  "name": "@daromsart/ui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./styles.css": "./src/styles.css"
+  },
+  "scripts": {
+    "build": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@daromsart/theme": "workspace:*",
+    "@hookform/resolvers": "3.9.0",
+    "@radix-ui/react-alert-dialog": "1.1.1",
+    "@radix-ui/react-avatar": "1.1.0",
+    "@radix-ui/react-dialog": "1.1.1",
+    "@radix-ui/react-dropdown-menu": "2.1.1",
+    "@radix-ui/react-label": "2.1.0",
+    "@radix-ui/react-popover": "1.1.1",
+    "@radix-ui/react-select": "2.1.1",
+    "@radix-ui/react-separator": "1.1.0",
+    "@radix-ui/react-slot": "1.1.0",
+    "@radix-ui/react-switch": "1.1.0",
+    "@radix-ui/react-tabs": "1.1.0",
+    "@radix-ui/react-tooltip": "1.1.2",
+    "@tanstack/react-table": "8.20.5",
+    "class-variance-authority": "0.7.0",
+    "clsx": "2.1.1",
+    "cmdk": "1.0.0",
+    "date-fns": "3.6.0",
+    "lucide-react": "0.436.0",
+    "react-day-picker": "8.10.1",
+    "react-hook-form": "7.53.0",
+    "sonner": "1.5.0",
+    "tailwind-merge": "2.5.2",
+    "zod": "3.23.8"
+  },
+  "peerDependencies": {
+    "next-themes": "^0.3.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0"
+  },
+  "devDependencies": {
+    "@daromsart/config": "workspace:*",
+    "@types/node": "20.14.15",
+    "@types/react": "18.3.5",
+    "@types/react-dom": "18.3.0",
+    "eslint": "9.10.0",
+    "next-themes": "0.3.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "typescript": "5.5.4",
+    "vitest": "2.0.5"
+  }
+}

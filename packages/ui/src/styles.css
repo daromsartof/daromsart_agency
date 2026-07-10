@@ -1,0 +1,14 @@
+/**
+ * Feuille de base optionnelle du design system. Les apps importent plutôt
+ * `@daromsart/theme/tokens.css` puis appliquent Tailwind. Ce fichier ne contient
+ * que quelques réglages de confort réutilisables.
+ */
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-sans);
+}
