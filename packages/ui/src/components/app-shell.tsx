@@ -21,14 +21,24 @@ export interface NavSection {
   items: NavItem[];
 }
 
-type LinkComponent = React.ComponentType<{
+/**
+ * Type de composant de lien accepté. `React.ElementType` reste volontairement
+ * permissif pour accepter `next/link` (dont les props sont plus larges) sans
+ * friction, tout en tolérant un simple `<a>`.
+ */
+type LinkComponent = React.ElementType;
+
+const DefaultLink = ({
+  href,
+  className,
+  onClick,
+  children,
+}: {
   href: string;
   className?: string;
   onClick?: () => void;
   children?: React.ReactNode;
-}>;
-
-const DefaultLink: LinkComponent = ({ href, className, onClick, children }) => (
+}) => (
   <a href={href} className={className} onClick={onClick}>
     {children}
   </a>
