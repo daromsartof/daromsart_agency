@@ -1,0 +1,10 @@
+# Le build s'exécute depuis la racine du monorepo ; ce fichier n'est utilisé
+# que si l'on build avec ce dossier comme contexte. On garde le même filtrage
+# que le .dockerignore racine pour éviter les surprises.
+node_modules
+.next
+.turbo
+coverage
+.env
+.env.*
+!.env.example

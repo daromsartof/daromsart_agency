@@ -13,6 +13,11 @@
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
     "e2e": "playwright test",
+    "docker:dev": "docker compose up -d",
+    "docker:dev:down": "docker compose down",
+    "docker:prod": "docker compose -f docker-compose.prod.yml up -d --build",
+    "docker:prod:down": "docker compose -f docker-compose.prod.yml down",
+    "docker:build:invoiceflow": "docker build -f apps/invoiceflow-ai/Dockerfile -t daromsart/invoiceflow-ai:latest .",
     "format": "prettier --write \"**/*.{ts,tsx,css,md,json}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,css,md,json}\""
   },
