@@ -1,0 +1,2 @@
+ALTER TABLE "organizations" ALTER COLUMN "legal_footer" SET DEFAULT 'En cas de retard de paiement, une pénalité au taux de trois fois le taux d''intérêt légal est exigible, ainsi qu''une indemnité forfaitaire pour frais de recouvrement de 40 € (art. L441-10 et D441-5 du Code de commerce). Pas d''escompte pour paiement anticipé. TVA non applicable, art. 293 B du CGI, le cas échéant.';--> statement-breakpoint
+ALTER TABLE "organizations" ALTER COLUMN "legal_footer" SET NOT NULL;

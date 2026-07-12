@@ -27,6 +27,10 @@ export interface EmailDefaults {
   reminder: EmailTemplate;
 }
 
+/** Mentions légales par défaut (H21), configurables dans Paramètres. */
+export const DEFAULT_LEGAL_FOOTER =
+  "En cas de retard de paiement, une pénalité au taux de trois fois le taux d'intérêt légal est exigible, ainsi qu'une indemnité forfaitaire pour frais de recouvrement de 40 € (art. L441-10 et D441-5 du Code de commerce). Pas d'escompte pour paiement anticipé. TVA non applicable, art. 293 B du CGI, le cas échéant.";
+
 /** L'entreprise émettrice (unique en pratique — multi-tenant prêt, H4). */
 export const organizations = pgTable("organizations", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -61,7 +65,9 @@ export const organizations = pgTable("organizations", {
     .notNull()
     .default("20"),
 
-  legalFooter: text("legal_footer"),
+  // H21 : mentions légales par défaut (pénalités de retard, indemnité de
+  // recouvrement, escompte, TVA art. 293 B) — configurables dans Paramètres.
+  legalFooter: text("legal_footer").notNull().default(DEFAULT_LEGAL_FOOTER),
 
   paymentTermsDays: integer("payment_terms_days").notNull().default(30),
   quoteValidityDays: integer("quote_validity_days").notNull().default(30),
