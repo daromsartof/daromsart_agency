@@ -1,8 +1,7 @@
 import { eq } from "drizzle-orm";
-import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import type { Storage } from "@daromsart/storage";
 import { organizations } from "../../db/schema";
-import type * as schema from "../../db/schema";
+import type { AppDb } from "../../db/types";
 import {
   LOGO_ALLOWED_TYPES,
   LOGO_MAX_BYTES,
@@ -23,7 +22,7 @@ import {
  * intégration sans contexte de requête ; `actions.ts` l'enrobe avec
  * `requireAdmin()` et `revalidatePath()`.
  */
-export type OrgDb = PostgresJsDatabase<typeof schema>;
+export type OrgDb = AppDb;
 
 export type MutationResult =
   | { ok: true }
