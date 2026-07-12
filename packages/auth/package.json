@@ -1,0 +1,26 @@
+{
+  "name": "@daromsart/auth",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "better-auth": "1.2.8"
+  },
+  "peerDependencies": {
+    "drizzle-orm": ">=0.30.0"
+  },
+  "devDependencies": {
+    "@daromsart/config": "workspace:*",
+    "drizzle-orm": "0.36.4",
+    "eslint": "9.10.0",
+    "typescript": "5.5.4"
+  }
+}
