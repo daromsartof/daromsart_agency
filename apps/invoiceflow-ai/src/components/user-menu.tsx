@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { LogOut, UserRound } from "lucide-react";
 import {
   Avatar,
@@ -14,6 +15,7 @@ import {
   DropdownMenuTrigger,
   initials,
 } from "@daromsart/ui";
+import { signOut } from "@/modules/auth/client";
 
 export interface UserMenuProps {
   name?: string | null;
@@ -21,6 +23,14 @@ export interface UserMenuProps {
 }
 
 export function UserMenu({ name, email }: UserMenuProps) {
+  const router = useRouter();
+
+  async function onSignOut() {
+    await signOut();
+    router.replace("/connexion");
+    router.refresh();
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -53,11 +63,9 @@ export function UserMenu({ name, email }: UserMenuProps) {
             Mon compte
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/connexion">
-            <LogOut className="h-4 w-4" />
-            Déconnexion
-          </Link>
+        <DropdownMenuItem onSelect={onSignOut}>
+          <LogOut className="h-4 w-4" />
+          Déconnexion
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

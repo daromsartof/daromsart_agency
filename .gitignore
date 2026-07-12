@@ -25,6 +25,9 @@ coverage/
 playwright-report/
 test-results/
 
+# local tooling
+.claude/settings.local.json
+
 # misc
 .DS_Store
 *.log
