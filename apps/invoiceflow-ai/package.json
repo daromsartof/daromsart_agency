@@ -19,6 +19,8 @@
   },
   "dependencies": {
     "@daromsart/auth": "workspace:*",
+    "@daromsart/core": "workspace:*",
+    "@daromsart/storage": "workspace:*",
     "@daromsart/theme": "workspace:*",
     "@daromsart/ui": "workspace:*",
     "better-auth": "1.2.8",
