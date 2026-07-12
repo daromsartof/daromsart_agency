@@ -43,6 +43,21 @@ export async function getMembershipRole(
 }
 
 /**
+ * Organisation de l'utilisateur courant (une seule en pratique, H4 ; on
+ * prend la première adhésion). `null` si l'utilisateur n'a aucune adhésion.
+ */
+export async function getCurrentOrganizationId(
+  userId: string,
+): Promise<string | null> {
+  const [row] = await db
+    .select({ organizationId: memberships.organizationId })
+    .from(memberships)
+    .where(eq(memberships.userId, userId))
+    .limit(1);
+  return row?.organizationId ?? null;
+}
+
+/**
  * Exige une session dont l'utilisateur est `admin` d'au moins une organisation.
  * Redirige vers /connexion sans session, sinon renvoie 403 via `notFound`-like.
  */

@@ -1,10 +1,99 @@
 import "dotenv/config";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { createAuth } from "@daromsart/auth";
 import { db } from "./index";
 import * as schema from "./schema";
-import { memberships, organizations, user } from "./schema";
+import { clientContacts, clients, memberships, organizations, user } from "./schema";
 import { env } from "../lib/env";
+
+interface SeedClient {
+  type: "company" | "individual";
+  displayName: string;
+  legalName?: string;
+  siret?: string;
+  vatNumber?: string;
+  email?: string;
+  phone?: string;
+  addressCity?: string;
+  archivedAt?: Date;
+  contacts?: { name: string; email?: string; role?: string }[];
+}
+
+const SEED_CLIENTS: SeedClient[] = [
+  {
+    type: "company",
+    displayName: "Atelier Lumière SARL",
+    legalName: "Atelier Lumière SARL",
+    siret: "48012345600025",
+    vatNumber: "FR40480123456",
+    email: "contact@atelier-lumiere.fr",
+    phone: "0145670001",
+    addressCity: "Lyon",
+    contacts: [
+      { name: "Claire Dupont", email: "claire@atelier-lumiere.fr", role: "Comptabilité" },
+      { name: "Marc Ferrand", email: "marc@atelier-lumiere.fr", role: "Direction" },
+    ],
+  },
+  {
+    type: "company",
+    displayName: "Nova Digital",
+    legalName: "Nova Digital SAS",
+    siret: "52098765400012",
+    vatNumber: "FR23520987654",
+    email: "hello@novadigital.io",
+    phone: "0148990002",
+    addressCity: "Paris",
+    contacts: [{ name: "Sophie Martin", email: "sophie@novadigital.io", role: "Achats" }],
+  },
+  {
+    type: "company",
+    displayName: "Boulangerie du Marché",
+    legalName: "Boulangerie du Marché EURL",
+    siret: "39056781200019",
+    email: "contact@boulangerie-marche.fr",
+    phone: "0472330003",
+    addressCity: "Villeurbanne",
+  },
+  {
+    type: "individual",
+    displayName: "Jean Petit",
+    email: "jean.petit@example.com",
+    phone: "0611220004",
+    addressCity: "Marseille",
+  },
+  {
+    type: "individual",
+    displayName: "Amandine Roy",
+    email: "amandine.roy@example.com",
+    phone: "0622330005",
+    addressCity: "Bordeaux",
+    contacts: [{ name: "Amandine Roy (pro)", email: "a.roy@proweb.fr", role: "Facturation" }],
+  },
+  {
+    type: "company",
+    displayName: "Studio Pixel",
+    legalName: "Studio Pixel SAS",
+    siret: "51234567800021",
+    vatNumber: "FR11512345678",
+    email: "compta@studiopixel.fr",
+    phone: "0155440006",
+    addressCity: "Nantes",
+  },
+  {
+    type: "individual",
+    displayName: "Nicolas Blanc",
+    email: "nicolas.blanc@example.com",
+    addressCity: "Toulouse",
+  },
+  {
+    type: "company",
+    displayName: "Ancien Client SARL",
+    legalName: "Ancien Client SARL",
+    email: "archive@ancien-client.fr",
+    addressCity: "Lille",
+    archivedAt: new Date("2025-01-15"),
+  },
+];
 
 /**
  * Seed idempotent : crée l'organisation émettrice et le compte administrateur
@@ -82,6 +171,44 @@ async function main() {
     console.info("✓ Adhésion admin créée.");
   } else {
     console.info("• Adhésion admin existante.");
+  }
+
+  // 4. Clients de démonstration (sociétés/particuliers, avec/sans contacts).
+  const [{ count: existingClientCount }] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(clients)
+    .where(eq(clients.organizationId, org.id));
+  if (existingClientCount === 0) {
+    for (const seedClient of SEED_CLIENTS) {
+      const [created] = await db
+        .insert(clients)
+        .values({
+          organizationId: org.id,
+          type: seedClient.type,
+          displayName: seedClient.displayName,
+          legalName: seedClient.legalName,
+          siret: seedClient.siret,
+          vatNumber: seedClient.vatNumber,
+          email: seedClient.email,
+          phone: seedClient.phone,
+          addressCity: seedClient.addressCity,
+          archivedAt: seedClient.archivedAt,
+        })
+        .returning();
+      if (seedClient.contacts?.length) {
+        await db.insert(clientContacts).values(
+          seedClient.contacts.map((c) => ({
+            clientId: created.id,
+            name: c.name,
+            email: c.email,
+            role: c.role,
+          })),
+        );
+      }
+    }
+    console.info(`✓ ${SEED_CLIENTS.length} clients de démonstration créés.`);
+  } else {
+    console.info(`• ${existingClientCount} client(s) déjà présents.`);
   }
 
   console.info("Seed terminé.");
