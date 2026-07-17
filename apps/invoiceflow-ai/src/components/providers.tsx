@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { ThemeProvider } from "next-themes";
+import { TooltipProvider } from "@daromsart/ui";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -11,7 +12,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       enableSystem
       disableTransitionOnChange
     >
-      {children}
+      <TooltipProvider>{children}</TooltipProvider>
     </ThemeProvider>
   );
 }

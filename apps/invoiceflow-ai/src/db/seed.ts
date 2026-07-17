@@ -3,8 +3,9 @@ import { eq, sql } from "drizzle-orm";
 import { createAuth } from "@daromsart/auth";
 import { db } from "./index";
 import * as schema from "./schema";
-import { clientContacts, clients, memberships, organizations, user } from "./schema";
+import { clientContacts, clients, memberships, organizations, quotes, user } from "./schema";
 import { env } from "../lib/env";
+import { createDraft } from "../modules/quotes/mutations";
 
 interface SeedClient {
   type: "company" | "individual";
@@ -209,6 +210,84 @@ async function main() {
     console.info(`✓ ${SEED_CLIENTS.length} clients de démonstration créés.`);
   } else {
     console.info(`• ${existingClientCount} client(s) déjà présents.`);
+  }
+
+  // 5. Devis de démonstration (brouillons variés : mono/multi-taux, remises).
+  const [{ count: existingQuoteCount }] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(quotes)
+    .where(eq(quotes.organizationId, org.id));
+  if (existingQuoteCount === 0) {
+    const seedClients = await db
+      .select({ id: clients.id })
+      .from(clients)
+      .where(eq(clients.organizationId, org.id))
+      .limit(6);
+
+    if (seedClients.length < 6) {
+      console.warn("• Pas assez de clients pour semer 6 devis — étape ignorée.");
+    } else {
+      const [c1, c2, c3, c4, c5, c6] = seedClients;
+      const validUntil = new Date();
+      validUntil.setDate(validUntil.getDate() + 30);
+
+      await createDraft(db, org.id, {
+        clientId: c1.id,
+        validUntil,
+        lines: [
+          { description: "Développement site vitrine", quantity: 1, unitPriceCents: 350000, vatRate: 20 },
+        ],
+      });
+      await createDraft(db, org.id, {
+        clientId: c2.id,
+        validUntil,
+        lines: [
+          { description: "Prestation de conseil", quantity: 5, unitPriceCents: 60000, vatRate: 20 },
+          { description: "Formation équipe (1 jour)", quantity: 1, unitPriceCents: 80000, vatRate: 10 },
+        ],
+      });
+      await createDraft(db, org.id, {
+        clientId: c3.id,
+        validUntil,
+        globalDiscount: { type: "percent", value: 10 },
+        lines: [
+          { description: "Maintenance mensuelle", quantity: 12, unitPriceCents: 15000, vatRate: 20 },
+        ],
+      });
+      await createDraft(db, org.id, {
+        clientId: c4.id,
+        validUntil,
+        lines: [
+          {
+            description: "Audit sécurité",
+            quantity: 1,
+            unitPriceCents: 120000,
+            vatRate: 20,
+            discount: { type: "amount", value: 10000 },
+          },
+        ],
+      });
+      await createDraft(db, org.id, {
+        clientId: c5.id,
+        validUntil,
+        notes: "Devis pour association loi 1901 — franchise en base de TVA.",
+        lines: [
+          { description: "Refonte identité visuelle", quantity: 1, unitPriceCents: 90000, vatRate: 0 },
+        ],
+      });
+      await createDraft(db, org.id, {
+        clientId: c6.id,
+        validUntil,
+        globalDiscount: { type: "amount", value: 5000 },
+        lines: [
+          { description: "Prestation A", quantity: 0.5, unitPriceCents: 100000, vatRate: 20 },
+          { description: "Prestation B", quantity: 3, unitPriceCents: 25000, vatRate: 5.5 },
+        ],
+      });
+      console.info("✓ 6 devis de démonstration créés (brouillons).");
+    }
+  } else {
+    console.info(`• ${existingQuoteCount} devis déjà présents.`);
   }
 
   console.info("Seed terminé.");
