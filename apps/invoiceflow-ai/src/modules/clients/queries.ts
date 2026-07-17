@@ -94,3 +94,25 @@ export async function getClientById(
 
   return { ...client, contacts };
 }
+
+/** Fiche client (story 06) : même requête que `getClientById`, nom dédié
+ * pour l'usage page de détail. */
+export const getClientDetail = getClientById;
+
+export interface ClientStats {
+  caFactureCents: number;
+  encoursCents: number;
+  retardCents: number;
+}
+
+/**
+ * Contrat verrouillé pour la story 12 (facturation) : la signature ne doit
+ * pas changer. V1 : zéros — pas de facture émise avant la story 12.
+ */
+export async function getClientStats(
+  _db: AppDb,
+  _organizationId: string,
+  _clientId: string,
+): Promise<ClientStats> {
+  return { caFactureCents: 0, encoursCents: 0, retardCents: 0 };
+}

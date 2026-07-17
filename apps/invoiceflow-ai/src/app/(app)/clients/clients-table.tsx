@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Building2, MoreHorizontal, User, Users } from "lucide-react";
 import {
@@ -75,7 +76,10 @@ export function ClientsTable({
       accessorKey: "displayName",
       header: "Nom",
       cell: ({ row }) => (
-        <div className="flex items-center gap-2">
+        <Link
+          href={`/clients/${row.original.id}`}
+          className="flex items-center gap-2 hover:underline"
+        >
           {row.original.type === "company" ? (
             <Building2 className="h-4 w-4 text-muted-foreground" />
           ) : (
@@ -87,7 +91,7 @@ export function ClientsTable({
               Archivé
             </Badge>
           ) : null}
-        </div>
+        </Link>
       ),
     },
     {
