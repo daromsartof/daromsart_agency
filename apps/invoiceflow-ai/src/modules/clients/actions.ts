@@ -12,7 +12,7 @@ import {
   type CreateClientResult,
   type MutationResult,
 } from "./mutations";
-import { getClientById, type ClientWithContacts } from "./queries";
+import { getClientById, listClients, type ClientWithContacts } from "./queries";
 
 async function requireOrganizationId(): Promise<string> {
   const session = await requireSession();
@@ -65,4 +65,22 @@ export async function getClientForEditAction(
 ): Promise<ClientWithContacts | null> {
   const organizationId = await requireOrganizationId();
   return getClientById(db, organizationId, clientId);
+}
+
+/** Recherche légère pour le combobox de sélection de client (éditeur de devis/facture). */
+export async function searchClientsAction(
+  q: string,
+): Promise<{ id: string; displayName: string; email: string | null }[]> {
+  const organizationId = await requireOrganizationId();
+  const result = await listClients(db, {
+    organizationId,
+    q,
+    page: 1,
+    pageSize: 20,
+  });
+  return result.items.map((c) => ({
+    id: c.id,
+    displayName: c.displayName,
+    email: c.email,
+  }));
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CreditCard, FileText, Receipt, Wallet } from "lucide-react";
 import {
@@ -10,6 +11,13 @@ import {
   CardTitle,
   EmptyState,
   StatCard,
+  StatusBadge,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Tabs,
   TabsContent,
   TabsList,
@@ -18,6 +26,7 @@ import {
 } from "@daromsart/ui";
 import { ClientHeader } from "@/modules/clients/components/client-header";
 import type { ClientStats, ClientWithContacts } from "@/modules/clients/queries";
+import type { QuoteRow } from "@/modules/quotes/queries";
 import {
   ClientSheet,
   type ClientSheetState,
@@ -26,12 +35,13 @@ import {
 export interface ClientDetailClientProps {
   client: ClientWithContacts;
   stats: ClientStats;
+  quotes: QuoteRow[];
 }
 
 const TABS = ["informations", "activite", "devis", "factures"] as const;
 type Tab = (typeof TABS)[number];
 
-export function ClientDetailClient({ client, stats }: ClientDetailClientProps) {
+export function ClientDetailClient({ client, stats, quotes }: ClientDetailClientProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -155,11 +165,47 @@ export function ClientDetailClient({ client, stats }: ClientDetailClientProps) {
         </TabsContent>
 
         <TabsContent value="devis">
-          <EmptyState
-            icon={FileText}
-            title="Disponible prochainement"
-            description="La liste des devis de ce client s'affichera ici."
-          />
+          {quotes.length ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Numéro</TableHead>
+                  <TableHead>Statut</TableHead>
+                  <TableHead className="text-right">Total TTC</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {quotes.map((quote) => (
+                  <TableRow key={quote.id}>
+                    <TableCell>
+                      <Link
+                        href={
+                          quote.status === "draft"
+                            ? `/devis/${quote.id}/modifier`
+                            : `/devis/${quote.id}`
+                        }
+                        className="hover:underline"
+                      >
+                        {quote.number ?? "Brouillon"}
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge status={quote.status} />
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatCentsEUR(quote.totalCents)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <EmptyState
+              icon={FileText}
+              title="Aucun devis"
+              description="Les devis créés pour ce client apparaîtront ici."
+            />
+          )}
         </TabsContent>
 
         <TabsContent value="factures">

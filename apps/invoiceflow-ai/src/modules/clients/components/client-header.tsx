@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Building2, FileText, Receipt, User } from "lucide-react";
 import {
@@ -84,17 +85,12 @@ export function ClientHeader({ client, onEdit }: ClientHeaderProps) {
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span>
-              <Button variant="outline" size="sm" disabled>
-                <FileText className="mr-2 h-4 w-4" />
-                Nouveau devis
-              </Button>
-            </span>
-          </TooltipTrigger>
-          <TooltipContent>Bientôt disponible</TooltipContent>
-        </Tooltip>
+        <Button variant="outline" size="sm" asChild>
+          <Link href={`/devis/nouveau?client=${client.id}`}>
+            <FileText className="mr-2 h-4 w-4" />
+            Nouveau devis
+          </Link>
+        </Button>
         <Tooltip>
           <TooltipTrigger asChild>
             <span>
