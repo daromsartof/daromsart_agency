@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { DocumentDraftInput } from "@daromsart/core";
 import { db } from "../../db";
-import { getCurrentOrganizationId, requireSession } from "../auth/session";
+import { getCurrentOrganizationId, requireAdmin, requireSession } from "../auth/session";
 import {
   createDraft,
   deleteDraft,
@@ -15,6 +15,13 @@ import {
   type MutationResult,
 } from "./mutations";
 import { getInvoiceById, type InvoiceDetail } from "./queries";
+import {
+  deletePayment,
+  recordPayment,
+  type DeletePaymentResult,
+  type RecordPaymentInput,
+  type RecordPaymentResult,
+} from "./payments";
 
 async function requireOrganizationId(): Promise<string> {
   const session = await requireSession();
@@ -75,6 +82,37 @@ export async function getInvoiceForEditAction(
 export async function issueInvoiceAction(invoiceId: string): Promise<IssueInvoiceResult> {
   const organizationId = await requireOrganizationId();
   const result = await issueInvoice(db, organizationId, invoiceId);
+  if (result.ok) {
+    revalidatePath("/factures");
+    revalidatePath(`/factures/${invoiceId}`);
+  }
+  return result;
+}
+
+export async function recordPaymentAction(
+  invoiceId: string,
+  input: RecordPaymentInput,
+): Promise<RecordPaymentResult> {
+  const organizationId = await requireOrganizationId();
+  const result = await recordPayment(db, organizationId, invoiceId, input);
+  if (result.ok) {
+    revalidatePath("/factures");
+    revalidatePath(`/factures/${invoiceId}`);
+  }
+  return result;
+}
+
+/** Suppression admin uniquement (E-16) : re-vérifiée ici, pas seulement masquée côté UI. */
+export async function deletePaymentAction(
+  invoiceId: string,
+  paymentId: string,
+): Promise<DeletePaymentResult> {
+  const session = await requireAdmin();
+  const organizationId = await getCurrentOrganizationId(session.user.id);
+  if (!organizationId) {
+    throw new Error("Utilisateur sans organisation.");
+  }
+  const result = await deletePayment(db, organizationId, invoiceId, paymentId);
   if (result.ok) {
     revalidatePath("/factures");
     revalidatePath(`/factures/${invoiceId}`);

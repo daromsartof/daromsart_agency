@@ -19,12 +19,12 @@ const QUOTE_ALLOWED: Record<QuoteStatus, QuoteStatus[]> = {
 
 const INVOICE_ALLOWED: Record<InvoiceStatus, InvoiceStatus[]> = {
   draft: ["issued"],
-  issued: ["sent", "cancelled"],
-  sent: ["viewed", "overdue", "cancelled"],
+  issued: ["sent", "cancelled", "partially_paid", "paid"],
+  sent: ["viewed", "overdue", "cancelled", "partially_paid", "paid"],
   viewed: ["partially_paid", "paid", "overdue", "cancelled"],
   partially_paid: ["paid", "overdue", "cancelled"],
   overdue: ["partially_paid", "paid", "cancelled"],
-  paid: [],
+  paid: ["partially_paid"],
   cancelled: [],
 };
 
@@ -64,10 +64,15 @@ describe("canTransition — cas limites", () => {
     }
   });
 
-  it("une facture payée ou annulée est un état terminal", () => {
+  it("une facture annulée est un état terminal", () => {
     for (const to of INVOICE_STATUSES) {
-      expect(canTransition("invoice", "paid", to)).toBe(false);
       expect(canTransition("invoice", "cancelled", to)).toBe(false);
+    }
+  });
+
+  it("une facture payée n'autorise que le retour à partially_paid (story 15, suppression de paiement)", () => {
+    for (const to of INVOICE_STATUSES) {
+      expect(canTransition("invoice", "paid", to)).toBe(to === "partially_paid");
     }
   });
 });
