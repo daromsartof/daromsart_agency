@@ -57,6 +57,13 @@
       "when": 1784660415393,
       "tag": "0007_uneven_nehzno",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1784662635567,
+      "tag": "0008_unknown_karnak",
+      "breakpoints": true
     }
   ]
 }

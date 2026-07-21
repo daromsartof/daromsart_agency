@@ -27,6 +27,7 @@ import {
 import { ClientHeader } from "@/modules/clients/components/client-header";
 import type { ClientStats, ClientWithContacts } from "@/modules/clients/queries";
 import type { QuoteRow } from "@/modules/quotes/queries";
+import type { InvoiceRow } from "@/modules/invoices/queries";
 import {
   ClientSheet,
   type ClientSheetState,
@@ -36,12 +37,13 @@ export interface ClientDetailClientProps {
   client: ClientWithContacts;
   stats: ClientStats;
   quotes: QuoteRow[];
+  invoices: InvoiceRow[];
 }
 
 const TABS = ["informations", "activite", "devis", "factures"] as const;
 type Tab = (typeof TABS)[number];
 
-export function ClientDetailClient({ client, stats, quotes }: ClientDetailClientProps) {
+export function ClientDetailClient({ client, stats, quotes, invoices }: ClientDetailClientProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -209,11 +211,47 @@ export function ClientDetailClient({ client, stats, quotes }: ClientDetailClient
         </TabsContent>
 
         <TabsContent value="factures">
-          <EmptyState
-            icon={Receipt}
-            title="Disponible prochainement"
-            description="La liste des factures de ce client s'affichera ici."
-          />
+          {invoices.length ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Numéro</TableHead>
+                  <TableHead>Statut</TableHead>
+                  <TableHead className="text-right">Total TTC</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {invoices.map((invoice) => (
+                  <TableRow key={invoice.id}>
+                    <TableCell>
+                      <Link
+                        href={
+                          invoice.status === "draft"
+                            ? `/factures/${invoice.id}/modifier`
+                            : `/factures/${invoice.id}`
+                        }
+                        className="hover:underline"
+                      >
+                        {invoice.number ?? "Brouillon"}
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge status={invoice.status} />
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatCentsEUR(invoice.totalCents)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <EmptyState
+              icon={Receipt}
+              title="Aucune facture"
+              description="Les factures créées pour ce client apparaîtront ici."
+            />
+          )}
         </TabsContent>
       </Tabs>
 

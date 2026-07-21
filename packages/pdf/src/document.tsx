@@ -96,6 +96,20 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   totalsLabel: { color: "#52525b" },
+  paymentBlock: {
+    marginBottom: 16,
+    padding: 10,
+    backgroundColor: "#f4f4f5",
+    borderRadius: 4,
+  },
+  paymentTitle: {
+    fontSize: 8,
+    fontWeight: "bold",
+    textTransform: "uppercase",
+    color: "#71717a",
+    marginBottom: 4,
+  },
+  paymentLine: { fontSize: 9, color: "#1f1f29" },
   totalsGrandRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -309,6 +323,16 @@ export function DocumentPdf({ data }: { data: DocumentPdfInput }) {
             <Text style={styles.totalsGrandValue}>{formatEUR(totals.totalCents)}</Text>
           </View>
         </View>
+
+        {meta.kind === "invoice" && organization.iban ? (
+          <View style={styles.paymentBlock} wrap={false}>
+            <Text style={styles.paymentTitle}>Coordonnées bancaires</Text>
+            <Text style={styles.paymentLine}>IBAN {organization.iban}</Text>
+            {organization.bic ? (
+              <Text style={styles.paymentLine}>BIC {organization.bic}</Text>
+            ) : null}
+          </View>
+        ) : null}
 
         {data.footerNote ? <Text style={styles.footerNote}>{data.footerNote}</Text> : null}
 

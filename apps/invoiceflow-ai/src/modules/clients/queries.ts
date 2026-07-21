@@ -1,6 +1,7 @@
 import { and, asc, eq, isNull, or, ilike, sql } from "drizzle-orm";
 import type { AppDb } from "../../db/types";
 import { clientContacts, clients } from "../../db/schema";
+import { getClientInvoiceStats } from "../invoices/queries";
 
 /**
  * Requêtes pures (sans `server-only`/Next), injectables avec n'importe quelle
@@ -106,13 +107,14 @@ export interface ClientStats {
 }
 
 /**
- * Contrat verrouillé pour la story 12 (facturation) : la signature ne doit
- * pas changer. V1 : zéros — pas de facture émise avant la story 12.
+ * Contrat verrouillé depuis la story 06 (fiche client) : la signature ne
+ * change pas. Story 12 : délègue au calcul réel (`getClientInvoiceStats`)
+ * maintenant que les factures existent.
  */
 export async function getClientStats(
-  _db: AppDb,
-  _organizationId: string,
-  _clientId: string,
+  db: AppDb,
+  organizationId: string,
+  clientId: string,
 ): Promise<ClientStats> {
-  return { caFactureCents: 0, encoursCents: 0, retardCents: 0 };
+  return getClientInvoiceStats(db, organizationId, clientId);
 }

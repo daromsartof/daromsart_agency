@@ -49,20 +49,23 @@ export interface DocumentFormProps {
   defaultValues: DocumentFormValues;
   vatRateOptions: number[];
   templateOptions?: DocumentTemplateOption[];
+  /** "Valide jusqu'au" (devis) ou "Date d'échéance" (facture) — même champ, sens différent. */
+  secondDateLabel?: string;
   onSubmit: (input: DocumentDraftInput) => Promise<DocumentFormSubmitResult>;
   onSuccess?: (id?: string) => void;
   submitLabel?: string;
 }
 
 /**
- * Formulaire partagé de document (devis aujourd'hui, factures plus tard).
- * V1 : pas d'autosave (parade story-07) — bouton « Enregistrer » explicite
- * + garde `beforeunload` si le formulaire est modifié (dirty).
+ * Formulaire partagé de document (devis, factures — story 12). V1 : pas
+ * d'autosave (parade story-07) — bouton « Enregistrer » explicite + garde
+ * `beforeunload` si le formulaire est modifié (dirty).
  */
 export function DocumentForm({
   defaultValues,
   vatRateOptions,
   templateOptions = [],
+  secondDateLabel = "Valide jusqu'au",
   onSubmit,
   onSuccess,
   submitLabel = "Enregistrer",
@@ -137,7 +140,7 @@ export function DocumentForm({
             name="validUntil"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Valide jusqu'au</FormLabel>
+                <FormLabel>{secondDateLabel}</FormLabel>
                 <FormControl>
                   <DatePicker value={field.value} onChange={field.onChange} />
                 </FormControl>

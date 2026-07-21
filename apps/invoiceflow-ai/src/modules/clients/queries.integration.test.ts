@@ -68,7 +68,7 @@ describe("getClientDetail", () => {
 });
 
 describe("getClientStats", () => {
-  it("retourne des zéros (contrat V1, branché en story 12)", async () => {
+  it("retourne des zéros pour un client sans facture (calcul réel, story 12)", async () => {
     const stats = await getClientStats(db, orgAId, clientAId);
     expect(stats).toEqual({
       caFactureCents: 0,
