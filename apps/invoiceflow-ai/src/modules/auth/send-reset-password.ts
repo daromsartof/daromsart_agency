@@ -1,20 +1,22 @@
 import "server-only";
+import { mailer } from "../../lib/mailer";
 
 /**
- * Envoi de l'email de réinitialisation de mot de passe.
- *
- * Le package @daromsart/email (Resend + React Email) arrive dans une story
- * ultérieure ; en attendant, on journalise le lien côté serveur pour permettre
- * de tester le flux de bout en bout en développement. À remplacer par l'appel
- * au module email dès qu'il est disponible.
+ * Envoi de l'email de réinitialisation de mot de passe via `@daromsart/email`
+ * (story 10). En l'absence de `RESEND_API_KEY`, le mailer bascule lui-même en
+ * mode dev (aperçu HTML sur disque, pas d'accès réseau) — rien à distinguer
+ * ici.
  */
 export async function sendResetPasswordEmail(params: {
   email: string;
   url: string;
   token: string;
 }): Promise<void> {
-  // eslint-disable-next-line no-console
-  console.info(
-    `[auth] Réinitialisation de mot de passe pour ${params.email} : ${params.url}`,
-  );
+  const result = await mailer.sendResetPasswordEmail({ to: params.email, url: params.url });
+  if (!result.ok) {
+    // eslint-disable-next-line no-console
+    console.error(
+      `[auth] Échec de l'envoi de l'email de réinitialisation à ${params.email} : ${result.error}`,
+    );
+  }
 }

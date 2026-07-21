@@ -20,7 +20,10 @@ const nextConfig = {
     // planter le reconciler (`TypeError: a.Component is not a constructor`).
     // Externaliser le paquet le fait charger via `require` Node normal, avec
     // le vrai `react`, plutôt que d'être bundlé/aliasé par webpack.
-    serverComponentsExternalPackages: ["@react-pdf/renderer"],
+    // @react-email/render : même famille de risque que @react-pdf/renderer
+    // (conditions d'exports "node"/"edge"/"browser" sensibles au layer RSC) —
+    // externalisé par précaution avant même d'avoir observé le crash.
+    serverComponentsExternalPackages: ["@react-pdf/renderer", "@react-email/render"],
   },
   // Les packages du monorepo sont consommés en source (pas de build préalable).
   transpilePackages: ["@daromsart/ui", "@daromsart/theme"],

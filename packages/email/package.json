@@ -1,0 +1,29 @@
+{
+  "name": "@daromsart/email",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@daromsart/core": "workspace:*",
+    "@react-email/components": "1.0.12",
+    "@react-email/render": "2.1.0",
+    "react": "18.3.1",
+    "resend": "6.18.0"
+  },
+  "devDependencies": {
+    "@daromsart/config": "workspace:*",
+    "@types/react": "18.3.5",
+    "eslint": "9.10.0",
+    "typescript": "5.5.4",
+    "vitest": "2.0.5"
+  }
+}
