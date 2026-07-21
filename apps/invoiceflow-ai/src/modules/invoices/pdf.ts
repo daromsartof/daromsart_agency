@@ -7,6 +7,7 @@ import { getClientById } from "../clients/queries";
 import { env } from "../../lib/env";
 import {
   addressFrom,
+  buildQrCodes,
   lineTotalCents,
   resolveLogoDataUrl,
   resolveTemplateOptions,
@@ -74,12 +75,21 @@ export async function buildInvoicePdfInput(
   }
 
   const logoDataUrl = await resolveLogoDataUrl(storage, orgData.logoKey);
-  const { pdf: templateOptions, headerFooter } = await resolveTemplateOptions(
-    db,
-    organizationId,
-    invoice.templateId,
-    "invoice",
-  );
+  const { pdf: templateOptions, headerFooter, showPaymentQr, showPublicLinkQr } =
+    await resolveTemplateOptions(db, organizationId, invoice.templateId, "invoice");
+
+  const publicUrl = invoice.shareToken ? `${env.APP_URL}/p/factures/${invoice.shareToken}` : null;
+  const qrCodes = await buildQrCodes({
+    showPaymentQr,
+    showPublicLinkQr,
+    kind: invoice.kind,
+    beneficiaryName: orgData.legalName,
+    iban: orgData.iban,
+    bic: orgData.bic,
+    totalCents: invoice.totalCents,
+    remittance: invoice.number,
+    publicUrl,
+  });
 
   return {
     organization: {
@@ -130,7 +140,8 @@ export async function buildInvoicePdfInput(
     footerNote: headerFooter,
     legalFooter: org.legalFooter,
     template: templateOptions,
-    publicUrl: invoice.shareToken ? `${env.APP_URL}/p/factures/${invoice.shareToken}` : null,
+    qrCodes,
+    publicUrl,
   };
 }
 

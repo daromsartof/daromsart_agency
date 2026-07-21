@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { renderDocumentPdf, type DocumentPdfInput } from "@daromsart/pdf";
+import { renderDocumentPdf, type DocumentPdfInput, type PdfQrCode } from "@daromsart/pdf";
 import { templateOptionsSchema, type TemplateOptions } from "@daromsart/core";
+import { buildQrCodes } from "@/modules/documents/pdf-helpers";
 import { requireSession } from "@/modules/auth/session";
 
 // @react-pdf/renderer utilise des API Node indisponibles en edge runtime.
@@ -8,9 +9,14 @@ export const runtime = "nodejs";
 
 const FIXTURE_DATE = new Date("2026-06-15");
 const FIXTURE_DUE = new Date("2026-07-15");
+// Coordonnées factices (E-19) : uniquement pour donner à voir le rendu des
+// QR de paiement/lien dans l'aperçu, jamais des données réelles.
+const FIXTURE_IBAN = "FR7630006000011234567890189";
+const FIXTURE_BIC = "AGRIFRPP";
+const FIXTURE_TOTAL_CENTS = 238050;
 
 /** Données factices fixes (E-19) : l'aperçu ne dépend d'aucune donnée réelle. */
-function fixtureInput(options: TemplateOptions): DocumentPdfInput {
+function fixtureInput(options: TemplateOptions, qrCodes: PdfQrCode[]): DocumentPdfInput {
   const { accentColor, showLogo, logoPosition, font, columns, footerNote, paymentTermsText } =
     options;
   const combinedFooter = [footerNote, paymentTermsText].filter(Boolean).join("\n");
@@ -65,6 +71,7 @@ function fixtureInput(options: TemplateOptions): DocumentPdfInput {
     legalFooter:
       "En cas de retard de paiement, une pénalité au taux de trois fois le taux d'intérêt légal est exigible, ainsi qu'une indemnité forfaitaire pour frais de recouvrement de 40 € (art. L441-10 et D441-5 du Code de commerce).",
     template: { accentColor, showLogo, logoPosition, font, columns },
+    qrCodes,
     publicUrl: "https://app.exemple.fr/p/devis/apercu",
   };
 }
@@ -86,7 +93,23 @@ export async function GET(request: NextRequest) {
   const parsed = templateOptionsSchema.safeParse(optionsJson);
   const options = parsed.success ? parsed.data : templateOptionsSchema.parse({});
 
-  const buffer = await renderDocumentPdf(fixtureInput(options));
+  // `kind: "invoice"` ici uniquement pour permettre de prévisualiser le QR de
+  // paiement (facture-only, H10) — le document factice affiché reste un
+  // "devis" (mise en page identique), l'aperçu n'a pas de règle métier à
+  // respecter, juste à montrer l'effet visuel des deux interrupteurs.
+  const qrCodes = await buildQrCodes({
+    showPaymentQr: options.showPaymentQr,
+    showPublicLinkQr: options.showPublicLinkQr,
+    kind: "invoice",
+    beneficiaryName: "Votre Entreprise SAS",
+    iban: FIXTURE_IBAN,
+    bic: FIXTURE_BIC,
+    totalCents: FIXTURE_TOTAL_CENTS,
+    remittance: "DEV-2026-0001",
+    publicUrl: "https://app.exemple.fr/p/devis/apercu",
+  });
+
+  const buffer = await renderDocumentPdf(fixtureInput(options, qrCodes));
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {

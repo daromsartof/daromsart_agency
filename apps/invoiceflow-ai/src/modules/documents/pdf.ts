@@ -6,7 +6,13 @@ import { organizations } from "../../db/schema";
 import { getClientById } from "../clients/queries";
 import { getQuoteById } from "../quotes/queries";
 import { env } from "../../lib/env";
-import { addressFrom, lineTotalCents, resolveLogoDataUrl, resolveTemplateOptions } from "./pdf-helpers";
+import {
+  addressFrom,
+  buildQrCodes,
+  lineTotalCents,
+  resolveLogoDataUrl,
+  resolveTemplateOptions,
+} from "./pdf-helpers";
 
 /**
  * Construit le DTO d'entrée de `renderDocumentPdf` (@daromsart/pdf) pour un
@@ -37,12 +43,21 @@ export async function buildQuotePdfInput(
   if (!client) return null;
 
   const logoDataUrl = await resolveLogoDataUrl(storage, org.logoKey);
-  const { pdf: templateOptions, headerFooter } = await resolveTemplateOptions(
-    db,
-    organizationId,
-    quote.templateId,
-    "quote",
-  );
+  const { pdf: templateOptions, headerFooter, showPaymentQr, showPublicLinkQr } =
+    await resolveTemplateOptions(db, organizationId, quote.templateId, "quote");
+
+  const publicUrl = quote.shareToken ? `${env.APP_URL}/p/devis/${quote.shareToken}` : null;
+  const qrCodes = await buildQrCodes({
+    showPaymentQr,
+    showPublicLinkQr,
+    kind: "quote",
+    beneficiaryName: org.legalName,
+    iban: org.iban,
+    bic: org.bic,
+    totalCents: quote.totalCents,
+    remittance: quote.number,
+    publicUrl,
+  });
 
   return {
     organization: {
@@ -93,7 +108,8 @@ export async function buildQuotePdfInput(
     footerNote: headerFooter,
     legalFooter: org.legalFooter,
     template: templateOptions,
-    publicUrl: quote.shareToken ? `${env.APP_URL}/p/devis/${quote.shareToken}` : null,
+    qrCodes,
+    publicUrl,
   };
 }
 
