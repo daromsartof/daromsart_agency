@@ -19,6 +19,10 @@ const EVENT_LABELS: Record<string, string> = {
   payment_deleted: "Paiement supprimé",
   reminded: "Relance envoyée",
   cancelled: "Annulé",
+  email_delivered: "Email délivré",
+  email_opened: "Email ouvert",
+  email_bounced: "Email non délivré (bounce)",
+  email_complained: "Email signalé comme spam",
 };
 
 function formatDateTime(date: Date): string {

@@ -1,13 +1,22 @@
 import { jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { organizations } from "./organization";
 
-export type EmailLogStatus = "queued" | "sent" | "delivered" | "opened" | "bounced" | "failed";
+export type EmailLogStatus =
+  | "queued"
+  | "sent"
+  | "delivered"
+  | "opened"
+  | "bounced"
+  | "complained"
+  | "failed";
 export type EmailLogKind = "document" | "reminder";
 
 /**
  * Journal des emails envoyés (H12) : un envoi = une ligne. `status` évolue
- * `queued → sent|failed` à l'envoi (story 10), puis `delivered|opened|bounced`
- * via le webhook Resend (story 20 — colonnes prêtes dès maintenant).
+ * `queued → sent|failed` à l'envoi (story 10), puis
+ * `delivered|opened|bounced|complained` via le webhook Resend (story 20).
+ * Pas de contrainte CHECK en base (colonne `text` + type TS) : `complained`
+ * a pu être ajouté à l'union sans migration.
  */
 export const emailLogs = pgTable("email_logs", {
   id: uuid("id").primaryKey().defaultRandom(),

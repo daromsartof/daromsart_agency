@@ -31,6 +31,8 @@ import { listCreditNotesForParent } from "@/modules/invoices/credit-notes";
 import { getQuoteById } from "@/modules/quotes/queries";
 import { getClientById } from "@/modules/clients/queries";
 import { getOrg } from "@/modules/organization/queries";
+import { listEmailLogsForDocument } from "@/modules/emails/queries";
+import { EmailLogList } from "@/modules/emails/components/email-log-list";
 
 export const metadata = { title: "Facture" };
 
@@ -264,6 +266,9 @@ export default async function FactureDetailPage({
     ? await getQuoteById(db, organizationId, invoice.quoteId)
     : null;
 
+  const emailLogs = await listEmailLogsForDocument(db, organizationId, "invoice", invoice.id);
+  const lastEmail = emailLogs[0] ?? null;
+
   return (
     <>
       <PageHeader
@@ -287,6 +292,12 @@ export default async function FactureDetailPage({
       {invoice.status === "cancelled" && cancelledByCreditNoteNumber ? (
         <div className="mb-4 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
           Annulée par l'avoir {cancelledByCreditNoteNumber}.
+        </div>
+      ) : null}
+
+      {lastEmail && (lastEmail.status === "bounced" || lastEmail.status === "complained") ? (
+        <div className="mb-4 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
+          L'adresse {lastEmail.to.join(", ")} semble invalide (email non délivré).
         </div>
       ) : null}
 
@@ -468,6 +479,15 @@ export default async function FactureDetailPage({
               </CardContent>
             </Card>
           ) : null}
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Emails</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <EmailLogList logs={emailLogs} />
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>

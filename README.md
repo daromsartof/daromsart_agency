@@ -35,6 +35,26 @@ pnpm lint
 Le détail par application (base de données, seed, variables d'env) sera
 documenté au fil des stories (voir `plans/stories.md`).
 
+## Emails (InvoiceFlow AI) — Resend
+
+En dev, `RESEND_API_KEY` vide suffit : les emails sont écrits dans
+`.storage/emails/*.html` au lieu d'être réellement envoyés.
+
+En production, pour suivre la délivrabilité (délivré/ouvert/bounce) :
+
+1. Renseigner `RESEND_API_KEY` et `EMAIL_FROM` (domaine d'envoi vérifié
+   sur [resend.com](https://resend.com)).
+2. Dans le dashboard Resend, section **Webhooks**, ajouter un endpoint
+   pointant vers `https://<votre-domaine>/api/webhooks/resend`.
+3. Activer les events `email.delivered`, `email.opened`, `email.bounced`,
+   `email.complained`.
+4. Copier le **signing secret** (`whsec_...`) fourni par Resend dans
+   `RESEND_WEBHOOK_SECRET`.
+
+Sans `RESEND_WEBHOOK_SECRET` configuré, le webhook refuse toute requête
+(signature invalide, 401) — c'est le comportement attendu tant que
+l'endpoint n'est pas branché côté Resend.
+
 ## Docker
 
 Deux usages distincts, pensés pour monter en charge (plusieurs apps à venir) :
