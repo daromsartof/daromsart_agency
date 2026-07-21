@@ -14,6 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@daromsart/ui";
+import Link from "next/link";
 import { isOverdue, renderEmailVariables } from "@daromsart/core";
 import { db } from "@/db";
 import { env } from "@/lib/env";
@@ -24,6 +25,7 @@ import { InvoiceDetailActions } from "@/modules/invoices/components/invoice-deta
 import { PaymentCard } from "@/modules/invoices/components/payment-card";
 import { getInvoiceById } from "@/modules/invoices/queries";
 import { listPaymentsForInvoice } from "@/modules/invoices/payments";
+import { getQuoteById } from "@/modules/quotes/queries";
 import { getClientById } from "@/modules/clients/queries";
 import { getOrg } from "@/modules/organization/queries";
 
@@ -102,6 +104,10 @@ export default async function FactureDetailPage({
     reminderVars,
   );
   const defaultReminderBody = renderEmailVariables(org.emailDefaults.reminder.body, reminderVars);
+
+  const originQuote = invoice.quoteId
+    ? await getQuoteById(db, organizationId, invoice.quoteId)
+    : null;
 
   return (
     <>
@@ -242,14 +248,40 @@ export default async function FactureDetailPage({
           </Card>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Activité</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <EventTimeline events={events} />
-          </CardContent>
-        </Card>
+        <div className="space-y-4">
+          {originQuote ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Origine</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <p className="text-muted-foreground">Créée depuis le devis</p>
+                <div className="flex items-center justify-between">
+                  <Link
+                    href={
+                      originQuote.status === "draft"
+                        ? `/devis/${originQuote.id}/modifier`
+                        : `/devis/${originQuote.id}`
+                    }
+                    className="font-medium hover:underline"
+                  >
+                    {originQuote.number ?? "Brouillon"}
+                  </Link>
+                  <StatusBadge status={originQuote.status} />
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Activité</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <EventTimeline events={events} />
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </>
   );

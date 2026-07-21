@@ -139,6 +139,8 @@ export interface QuoteDetail {
   status: QuoteStatus;
   number: string | null;
   shareToken: string | null;
+  /** Facture issue d'une conversion (story 17), ou `null`. */
+  invoiceId: string | null;
   sentAt: Date | null;
   viewedAt: Date | null;
   signedAt: Date | null;
@@ -174,6 +176,7 @@ export async function getQuoteById(
       status: quotes.status,
       number: quotes.number,
       shareToken: quotes.shareToken,
+      invoiceId: quotes.invoiceId,
       sentAt: quotes.sentAt,
       viewedAt: quotes.viewedAt,
       signedAt: quotes.signedAt,
@@ -214,6 +217,7 @@ export async function getQuoteById(
     status: quote.status as QuoteStatus,
     number: quote.number,
     shareToken: quote.shareToken,
+    invoiceId: quote.invoiceId,
     sentAt: quote.sentAt,
     viewedAt: quote.viewedAt,
     signedAt: quote.signedAt,

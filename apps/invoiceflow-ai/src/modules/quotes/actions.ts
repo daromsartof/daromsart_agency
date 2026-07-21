@@ -5,12 +5,14 @@ import type { DocumentDraftInput } from "@daromsart/core";
 import { db } from "../../db";
 import { getCurrentOrganizationId, requireSession } from "../auth/session";
 import {
+  convertToInvoice,
   createDraft,
   deleteDraft,
   duplicate,
   issueQuote,
   markRefused,
   updateDraft,
+  type ConvertToInvoiceResult,
   type CreateQuoteResult,
   type IssueQuoteResult,
   type MutationResult,
@@ -92,6 +94,20 @@ export async function markRefusedAction(
   if (result.ok) {
     revalidatePath("/devis");
     revalidatePath(`/devis/${quoteId}`);
+  }
+  return result;
+}
+
+export async function convertToInvoiceAction(
+  quoteId: string,
+  options: { force?: boolean } = {},
+): Promise<ConvertToInvoiceResult> {
+  const organizationId = await requireOrganizationId();
+  const result = await convertToInvoice(db, organizationId, quoteId, options);
+  if (result.ok) {
+    revalidatePath("/devis");
+    revalidatePath(`/devis/${quoteId}`);
+    revalidatePath("/factures");
   }
   return result;
 }

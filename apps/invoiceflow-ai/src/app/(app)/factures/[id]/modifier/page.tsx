@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { getCurrentOrganizationId, requireSession } from "@/modules/auth/session";
 import { getOrg } from "@/modules/organization/queries";
 import { getInvoiceById } from "@/modules/invoices/queries";
+import { getQuoteById } from "@/modules/quotes/queries";
 import { listTemplates } from "@/modules/templates/queries";
 import { ModifierFactureClient } from "./modifier-facture-client";
 
@@ -33,11 +34,16 @@ export default async function ModifierFacturePage({
     .filter((t) => t.type === "invoice" || t.type === "both")
     .map((t) => ({ id: t.id, name: t.name, isDefault: t.isDefault }));
 
+  const originQuote = invoice.quoteId
+    ? await getQuoteById(db, organizationId, invoice.quoteId)
+    : null;
+
   return (
     <ModifierFactureClient
       invoice={invoice}
       vatRateOptions={org.vatRatesActive}
       templateOptions={invoiceTemplates}
+      originQuoteNumber={originQuote?.number ?? null}
     />
   );
 }

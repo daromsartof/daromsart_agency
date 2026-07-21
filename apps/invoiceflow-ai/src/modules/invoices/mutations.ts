@@ -5,6 +5,7 @@ import {
   documentDraftSchema,
   type DocumentDraftInput,
   type InvoiceStatus,
+  type QuoteStatus,
 } from "@daromsart/core";
 import type { AppDb } from "../../db/types";
 import {
@@ -13,6 +14,7 @@ import {
   invoiceLines,
   invoices,
   organizations,
+  quotes,
   type InvoiceClientSnapshot,
   type InvoiceOrgSnapshot,
 } from "../../db/schema";
@@ -228,7 +230,7 @@ export async function deleteDraft(
   invoiceId: string,
 ): Promise<MutationResult> {
   const [existing] = await db
-    .select({ id: invoices.id, status: invoices.status })
+    .select({ id: invoices.id, status: invoices.status, quoteId: invoices.quoteId })
     .from(invoices)
     .where(and(eq(invoices.id, invoiceId), eq(invoices.organizationId, organizationId)))
     .limit(1);
@@ -249,6 +251,22 @@ export async function deleteDraft(
     documentId: invoiceId,
     eventType: "deleted",
   });
+
+  // Story 17 : supprimer un brouillon issu d'une conversion dé-lie le devis
+  // d'origine (`invoice_id = null`) pour permettre une nouvelle conversion.
+  if (existing.quoteId) {
+    await db
+      .update(quotes)
+      .set({ invoiceId: null, updatedAt: new Date() })
+      .where(eq(quotes.id, existing.quoteId));
+    await addDocumentEvent(db, {
+      organizationId,
+      documentType: "quote",
+      documentId: existing.quoteId,
+      eventType: "unlinked",
+      payload: { invoiceId },
+    });
+  }
 
   return { ok: true };
 }
@@ -341,7 +359,12 @@ export async function issueInvoice(
 ): Promise<IssueInvoiceResult> {
   return db.transaction(async (tx) => {
     const [existing] = await tx
-      .select({ id: invoices.id, status: invoices.status, clientId: invoices.clientId })
+      .select({
+        id: invoices.id,
+        status: invoices.status,
+        clientId: invoices.clientId,
+        quoteId: invoices.quoteId,
+      })
       .from(invoices)
       .where(and(eq(invoices.id, invoiceId), eq(invoices.organizationId, organizationId)))
       .limit(1);
@@ -432,6 +455,32 @@ export async function issueInvoice(
       eventType: "issued",
       payload: { number },
     });
+
+    // Story 17 : une facture issue d'une conversion fait passer le devis
+    // d'origine à `invoiced` UNIQUEMENT à ce moment (jamais à la conversion
+    // elle-même) — `canTransition` autorise ce passage depuis `signed` (le
+    // chemin nominal) mais aussi `sent`/`viewed` (conversion forcée avant
+    // signature formelle).
+    if (existing.quoteId) {
+      const [quote] = await tx
+        .select({ status: quotes.status })
+        .from(quotes)
+        .where(eq(quotes.id, existing.quoteId))
+        .limit(1);
+      if (quote && canTransition("quote", quote.status as QuoteStatus, "invoiced")) {
+        await tx
+          .update(quotes)
+          .set({ status: "invoiced", updatedAt: now })
+          .where(eq(quotes.id, existing.quoteId));
+        await addDocumentEvent(tx, {
+          organizationId,
+          documentType: "quote",
+          documentId: existing.quoteId,
+          eventType: "invoiced",
+          payload: { invoiceId },
+        });
+      }
+    }
 
     return { ok: true, number };
   });

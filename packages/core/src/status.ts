@@ -19,10 +19,19 @@ export type InvoiceStatus =
   | "overdue"
   | "cancelled";
 
+/**
+ * `sent`/`viewed` → `invoiced` (story 17) : un devis converti en facture
+ * "de force" (confirmation utilisateur, pas encore signé) doit pouvoir
+ * atteindre `invoiced` quand la facture issue de la conversion est émise —
+ * pas seulement depuis `signed` (le chemin nominal). `convertToInvoice`
+ * n'utilise PAS cette transition directement (elle ne touche jamais le
+ * statut du devis à la conversion) : c'est `issueInvoice` qui la déclenche,
+ * plus tard, si `invoice.quoteId` est posé.
+ */
 const QUOTE_TRANSITIONS: Record<QuoteStatus, QuoteStatus[]> = {
   draft: ["sent"],
-  sent: ["viewed", "signed", "refused", "expired"],
-  viewed: ["signed", "refused", "expired"],
+  sent: ["viewed", "signed", "refused", "expired", "invoiced"],
+  viewed: ["signed", "refused", "expired", "invoiced"],
   signed: ["invoiced"],
   refused: [],
   expired: [],

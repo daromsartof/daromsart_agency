@@ -1,0 +1,7 @@
+ALTER TABLE "organizations" ALTER COLUMN "email_defaults" SET DEFAULT '{"quote":{"subject":"Votre devis {numero}","body":"Bonjour {client},\n\nVeuillez trouver ci-joint notre devis {numero} d''un montant de {total}.\n\nVous pouvez le consulter et le signer en ligne : {lien}\n\nCe devis est valable jusqu''au {echeance}.\n\nN''hésitez pas à nous contacter pour toute question.\n\nCordialement."},"invoice":{"subject":"Votre facture {numero}","body":"Bonjour {client},\n\nVeuillez trouver ci-joint notre facture {numero} d''un montant de {total}, à régler avant le {echeance}.\n\nVous pouvez la consulter en ligne : {lien}\n\nCordialement."},"reminder":{"subject":"Rappel — facture {numero} en attente de règlement","body":"Bonjour {client},\n\nSauf erreur de notre part, notre facture {numero} d''un montant de {total}, échue le {echeance} (en retard de {jours_retard} jours), demeure impayée à ce jour.\n\nVous pouvez la consulter et procéder au règlement ici : {lien}\n\nMerci de bien vouloir régulariser dans les meilleurs délais.\n\nCordialement."}}'::jsonb;--> statement-breakpoint
+ALTER TABLE "quotes" ADD COLUMN "invoice_id" uuid;--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "quotes" ADD CONSTRAINT "quotes_invoice_id_invoices_id_fk" FOREIGN KEY ("invoice_id") REFERENCES "public"."invoices"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
