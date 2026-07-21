@@ -19,6 +19,27 @@ export interface SendDocumentEmailParams {
   pdfFilename: string;
 }
 
+export interface ReminderEmailData {
+  number: string;
+  clientName: string;
+  organizationName: string;
+  remainingCents: number;
+  daysOverdue: number;
+  publicUrl: string;
+  /** Corps libre (déjà résolu : variables `{client}/{numero}/.../{jours_retard}` substituées). */
+  bodyText: string;
+  accentColor: string;
+}
+
+export interface SendReminderEmailParams {
+  to: string[];
+  cc?: string[];
+  subject: string;
+  reminder: ReminderEmailData;
+  pdfBuffer: Buffer;
+  pdfFilename: string;
+}
+
 export interface SendResetPasswordEmailParams {
   to: string;
   url: string;

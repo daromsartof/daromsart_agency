@@ -4,12 +4,14 @@ import { randomBytes } from "node:crypto";
 import { Resend } from "resend";
 import { render } from "@react-email/render";
 import { DocumentEmail } from "./templates/document-email";
+import { ReminderEmail } from "./templates/reminder-email";
 import { ResetPasswordEmail } from "./templates/reset-password-email";
 import { SignatureConfirmationEmail } from "./templates/signature-confirmation";
 import type {
   MailerConfig,
   SendDocumentEmailParams,
   SendEmailResult,
+  SendReminderEmailParams,
   SendResetPasswordEmailParams,
   SendSignatureConfirmationParams,
 } from "./types";
@@ -23,6 +25,7 @@ export interface Mailer {
   sendSignatureConfirmation(
     params: SendSignatureConfirmationParams,
   ): Promise<SendEmailResult>;
+  sendReminderEmail(params: SendReminderEmailParams): Promise<SendEmailResult>;
 }
 
 function fakeId(prefix: string): string {
@@ -114,6 +117,18 @@ export function createMailer(config: MailerConfig): Mailer {
           withinLimit && params.pdfBuffer && params.pdfFilename
             ? { filename: params.pdfFilename, content: params.pdfBuffer }
             : undefined,
+      });
+    },
+    async sendReminderEmail(params) {
+      const withinLimit = params.pdfBuffer.byteLength <= MAX_ATTACHMENT_BYTES;
+      return dispatch({
+        to: params.to,
+        cc: params.cc,
+        subject: params.subject,
+        react: <ReminderEmail data={params.reminder} />,
+        attachment: withinLimit
+          ? { filename: params.pdfFilename, content: params.pdfBuffer }
+          : undefined,
       });
     },
   };

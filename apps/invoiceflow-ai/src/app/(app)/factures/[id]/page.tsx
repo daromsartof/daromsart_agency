@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@daromsart/ui";
-import { renderEmailVariables } from "@daromsart/core";
+import { isOverdue, renderEmailVariables } from "@daromsart/core";
 import { db } from "@/db";
 import { env } from "@/lib/env";
 import { getCurrentOrganizationId, getMembershipRole, requireSession } from "@/modules/auth/session";
@@ -83,6 +83,26 @@ export default async function FactureDetailPage({
   const defaultSubject = renderEmailVariables(org.emailDefaults.invoice.subject, emailVars);
   const defaultBody = renderEmailVariables(org.emailDefaults.invoice.body, emailVars);
 
+  const now = new Date();
+  const overdue = isOverdue(
+    {
+      status: invoice.status,
+      dueDate: invoice.dueDate,
+      totalCents: invoice.totalCents,
+      amountPaidCents: invoice.amountPaidCents,
+    },
+    now,
+  );
+  const daysOverdue = invoice.dueDate
+    ? Math.max(0, Math.floor((now.getTime() - invoice.dueDate.getTime()) / (1000 * 60 * 60 * 24)))
+    : 0;
+  const reminderVars = { ...emailVars, jours_retard: String(daysOverdue) };
+  const defaultReminderSubject = renderEmailVariables(
+    org.emailDefaults.reminder.subject,
+    reminderVars,
+  );
+  const defaultReminderBody = renderEmailVariables(org.emailDefaults.reminder.body, reminderVars);
+
   return (
     <>
       <PageHeader
@@ -95,6 +115,11 @@ export default async function FactureDetailPage({
           defaultRecipient={client?.email ?? null}
           defaultSubject={defaultSubject}
           defaultBody={defaultBody}
+          overdue={overdue}
+          daysOverdue={daysOverdue}
+          remainingCents={invoice.totalCents - invoice.amountPaidCents}
+          defaultReminderSubject={defaultReminderSubject}
+          defaultReminderBody={defaultReminderBody}
         />
       </PageHeader>
 

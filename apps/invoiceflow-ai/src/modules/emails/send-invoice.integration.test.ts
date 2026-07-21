@@ -31,6 +31,9 @@ const okMailer: Mailer = {
   async sendSignatureConfirmation() {
     return { ok: true, id: "resend_fake_id", mode: "resend" };
   },
+  async sendReminderEmail() {
+    return { ok: true, id: "resend_fake_id", mode: "resend" };
+  },
 };
 
 const failingMailer: Mailer = {
@@ -41,6 +44,9 @@ const failingMailer: Mailer = {
     return { ok: false, error: "Resend indisponible (mock test)." };
   },
   async sendSignatureConfirmation() {
+    return { ok: false, error: "Resend indisponible (mock test)." };
+  },
+  async sendReminderEmail() {
     return { ok: false, error: "Resend indisponible (mock test)." };
   },
 };

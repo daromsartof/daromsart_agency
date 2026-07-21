@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import type { DocumentDraftInput } from "@daromsart/core";
 import { db } from "../../db";
+import { storage } from "../../lib/storage";
+import { mailer } from "../../lib/mailer";
 import { getCurrentOrganizationId, requireAdmin, requireSession } from "../auth/session";
 import {
   createDraft,
@@ -22,6 +24,7 @@ import {
   type RecordPaymentInput,
   type RecordPaymentResult,
 } from "./payments";
+import { remindInvoice, type RemindInvoiceInput, type RemindInvoiceResult } from "./reminders";
 
 async function requireOrganizationId(): Promise<string> {
   const session = await requireSession();
@@ -113,6 +116,19 @@ export async function deletePaymentAction(
     throw new Error("Utilisateur sans organisation.");
   }
   const result = await deletePayment(db, organizationId, invoiceId, paymentId);
+  if (result.ok) {
+    revalidatePath("/factures");
+    revalidatePath(`/factures/${invoiceId}`);
+  }
+  return result;
+}
+
+export async function remindInvoiceAction(
+  invoiceId: string,
+  input: RemindInvoiceInput,
+): Promise<RemindInvoiceResult> {
+  const organizationId = await requireOrganizationId();
+  const result = await remindInvoice(db, storage, mailer, organizationId, invoiceId, input);
   if (result.ok) {
     revalidatePath("/factures");
     revalidatePath(`/factures/${invoiceId}`);
