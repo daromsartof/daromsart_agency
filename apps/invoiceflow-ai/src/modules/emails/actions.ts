@@ -5,7 +5,14 @@ import { db } from "../../db";
 import { storage } from "../../lib/storage";
 import { mailer } from "../../lib/mailer";
 import { getCurrentOrganizationId, requireSession } from "../auth/session";
-import { sendQuoteEmail, type SendQuoteEmailInput, type SendQuoteEmailResult } from "./send-document";
+import {
+  sendInvoiceEmail,
+  sendQuoteEmail,
+  type SendInvoiceEmailInput,
+  type SendInvoiceEmailResult,
+  type SendQuoteEmailInput,
+  type SendQuoteEmailResult,
+} from "./send-document";
 
 async function requireOrganizationId(): Promise<string> {
   const session = await requireSession();
@@ -25,6 +32,19 @@ export async function sendQuoteEmailAction(
   if (result.ok) {
     revalidatePath("/devis");
     revalidatePath(`/devis/${quoteId}`);
+  }
+  return result;
+}
+
+export async function sendInvoiceEmailAction(
+  invoiceId: string,
+  input: SendInvoiceEmailInput,
+): Promise<SendInvoiceEmailResult> {
+  const organizationId = await requireOrganizationId();
+  const result = await sendInvoiceEmail(db, storage, mailer, organizationId, invoiceId, input);
+  if (result.ok) {
+    revalidatePath("/factures");
+    revalidatePath(`/factures/${invoiceId}`);
   }
   return result;
 }

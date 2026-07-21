@@ -14,12 +14,16 @@ import {
   TableHeader,
   TableRow,
 } from "@daromsart/ui";
+import { renderEmailVariables } from "@daromsart/core";
 import { db } from "@/db";
+import { env } from "@/lib/env";
 import { getCurrentOrganizationId, requireSession } from "@/modules/auth/session";
 import { listDocumentEvents } from "@/modules/documents/events";
 import { EventTimeline } from "@/modules/documents/components/event-timeline";
 import { InvoiceDetailActions } from "@/modules/invoices/components/invoice-detail-actions";
 import { getInvoiceById } from "@/modules/invoices/queries";
+import { getClientById } from "@/modules/clients/queries";
+import { getOrg } from "@/modules/organization/queries";
 
 export const metadata = { title: "Facture" };
 
@@ -53,13 +57,40 @@ export default async function FactureDetailPage({
   const iban = invoice.organizationSnapshot?.iban;
   const bic = invoice.organizationSnapshot?.bic;
 
+  const publicUrl = invoice.shareToken ? `${env.APP_URL}/p/factures/${invoice.shareToken}` : null;
+  const [client, org] = await Promise.all([
+    getClientById(db, organizationId, invoice.clientId),
+    getOrg(),
+  ]);
+  const emailVars = {
+    client: invoice.clientName,
+    numero: invoice.number ?? undefined,
+    total: formatCentsEUR(invoice.totalCents),
+    lien: publicUrl ?? undefined,
+    echeance: invoice.dueDate
+      ? invoice.dueDate.toLocaleDateString("fr-FR", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        })
+      : undefined,
+  };
+  const defaultSubject = renderEmailVariables(org.emailDefaults.invoice.subject, emailVars);
+  const defaultBody = renderEmailVariables(org.emailDefaults.invoice.body, emailVars);
+
   return (
     <>
       <PageHeader
         title={`Facture — ${invoice.clientName}`}
         description={invoice.number ?? "Brouillon (numéro attribué à l'émission)"}
       >
-        <InvoiceDetailActions invoice={invoice} />
+        <InvoiceDetailActions
+          invoice={invoice}
+          publicUrl={publicUrl}
+          defaultRecipient={client?.email ?? null}
+          defaultSubject={defaultSubject}
+          defaultBody={defaultBody}
+        />
       </PageHeader>
 
       <div className="grid gap-4 lg:grid-cols-3">

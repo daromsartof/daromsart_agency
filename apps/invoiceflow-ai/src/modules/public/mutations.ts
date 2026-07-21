@@ -1,11 +1,11 @@
 import { createHash } from "node:crypto";
 import { eq } from "drizzle-orm";
-import { canTransition, isQuoteExpired, type QuoteStatus } from "@daromsart/core";
+import { canTransition, isQuoteExpired, type InvoiceStatus, type QuoteStatus } from "@daromsart/core";
 import { renderDocumentPdf, type DocumentPdfInput } from "@daromsart/pdf";
 import type { Storage } from "@daromsart/storage";
 import type { Mailer, SendSignatureConfirmationParams } from "@daromsart/email";
 import type { AppDb } from "../../db/types";
-import { emailLogs, quotes, signatures } from "../../db/schema";
+import { emailLogs, invoices, quotes, signatures } from "../../db/schema";
 import { addDocumentEvent } from "../documents/events";
 import { buildQuotePdfInput } from "../documents/pdf";
 import { env } from "../../lib/env";
@@ -42,6 +42,33 @@ export async function markViewed(db: AppDb, quoteId: string): Promise<void> {
     organizationId: row.organizationId,
     documentType: "quote",
     documentId: quoteId,
+    eventType: "viewed",
+  });
+}
+
+/**
+ * Marque une facture comme vue (story 14, symétrique de `markViewed` pour
+ * les devis). Idempotent via `canTransition` : `viewed→viewed` refusé,
+ * `partially_paid/paid/overdue/cancelled` ne régressent jamais vers `viewed`.
+ */
+export async function markInvoiceViewed(db: AppDb, invoiceId: string): Promise<void> {
+  const [row] = await db
+    .select({ status: invoices.status, organizationId: invoices.organizationId })
+    .from(invoices)
+    .where(eq(invoices.id, invoiceId))
+    .limit(1);
+  if (!row) return;
+  if (!canTransition("invoice", row.status as InvoiceStatus, "viewed")) return;
+
+  const now = new Date();
+  await db
+    .update(invoices)
+    .set({ status: "viewed", viewedAt: now, updatedAt: now })
+    .where(eq(invoices.id, invoiceId));
+  await addDocumentEvent(db, {
+    organizationId: row.organizationId,
+    documentType: "invoice",
+    documentId: invoiceId,
     eventType: "viewed",
   });
 }
