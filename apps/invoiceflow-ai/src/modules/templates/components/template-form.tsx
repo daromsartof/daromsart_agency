@@ -291,7 +291,7 @@ export function TemplateForm({
 
         <div>
           <h3 className="mb-3 text-sm font-medium text-muted-foreground">
-            QR codes (rendu à venir)
+            QR codes
           </h3>
           <div className="grid gap-3 sm:grid-cols-2">
             <FormField
