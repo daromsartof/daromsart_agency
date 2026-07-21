@@ -27,6 +27,8 @@ import { getQuoteById, getQuoteSignature } from "@/modules/quotes/queries";
 import { getInvoiceById } from "@/modules/invoices/queries";
 import { getClientById } from "@/modules/clients/queries";
 import { getOrg } from "@/modules/organization/queries";
+import { listEmailLogsForDocument } from "@/modules/emails/queries";
+import { EmailLogList } from "@/modules/emails/components/email-log-list";
 
 export const metadata = { title: "Devis" };
 
@@ -87,6 +89,9 @@ export default async function DevisDetailPage({
     ? await getInvoiceById(db, organizationId, quote.invoiceId)
     : null;
 
+  const emailLogs = await listEmailLogsForDocument(db, organizationId, "quote", quote.id);
+  const lastEmail = emailLogs[0] ?? null;
+
   return (
     <>
       <PageHeader
@@ -101,6 +106,12 @@ export default async function DevisDetailPage({
           defaultBody={defaultBody}
         />
       </PageHeader>
+
+      {lastEmail && (lastEmail.status === "bounced" || lastEmail.status === "complained") ? (
+        <div className="mb-4 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
+          L'adresse {lastEmail.to.join(", ")} semble invalide (email non délivré).
+        </div>
+      ) : null}
 
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
@@ -255,6 +266,15 @@ export default async function DevisDetailPage({
               </CardContent>
             </Card>
           ) : null}
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Emails</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <EmailLogList logs={emailLogs} />
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>

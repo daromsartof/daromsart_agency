@@ -13,6 +13,9 @@ export interface EmailLogRow {
   status: EmailLogStatus;
   errorMessage: string | null;
   sentAt: Date | null;
+  deliveredAt: Date | null;
+  openedAt: Date | null;
+  bouncedAt: Date | null;
   createdAt: Date;
 }
 
@@ -35,6 +38,9 @@ export async function listEmailLogsForDocument(
       status: emailLogs.status,
       errorMessage: emailLogs.errorMessage,
       sentAt: emailLogs.sentAt,
+      deliveredAt: emailLogs.deliveredAt,
+      openedAt: emailLogs.openedAt,
+      bouncedAt: emailLogs.bouncedAt,
       createdAt: emailLogs.createdAt,
     })
     .from(emailLogs)
