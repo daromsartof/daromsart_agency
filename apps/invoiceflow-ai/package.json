@@ -20,11 +20,13 @@
   "dependencies": {
     "@daromsart/auth": "workspace:*",
     "@daromsart/core": "workspace:*",
+    "@daromsart/email": "workspace:*",
     "@daromsart/pdf": "workspace:*",
     "@daromsart/storage": "workspace:*",
     "@daromsart/theme": "workspace:*",
     "@daromsart/ui": "workspace:*",
     "@hookform/resolvers": "3.9.0",
+    "@react-email/render": "2.1.0",
     "@react-pdf/renderer": "4.5.1",
     "better-auth": "1.2.8",
     "drizzle-orm": "0.36.4",

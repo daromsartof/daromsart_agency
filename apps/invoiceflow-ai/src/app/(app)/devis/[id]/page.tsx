@@ -14,6 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@daromsart/ui";
+import { renderEmailVariables } from "@daromsart/core";
 import { db } from "@/db";
 import { env } from "@/lib/env";
 import { getCurrentOrganizationId, requireSession } from "@/modules/auth/session";
@@ -21,6 +22,8 @@ import { listDocumentEvents } from "@/modules/documents/events";
 import { EventTimeline } from "@/modules/documents/components/event-timeline";
 import { QuoteDetailActions } from "@/modules/quotes/components/quote-detail-actions";
 import { getQuoteById } from "@/modules/quotes/queries";
+import { getClientById } from "@/modules/clients/queries";
+import { getOrg } from "@/modules/organization/queries";
 
 export const metadata = { title: "Devis" };
 
@@ -53,13 +56,39 @@ export default async function DevisDetailPage({
   const publicUrl = quote.shareToken ? `${env.APP_URL}/p/devis/${quote.shareToken}` : null;
   const pdfUrl = `/api/documents/devis/${quote.id}/pdf`;
 
+  const [client, org] = await Promise.all([
+    getClientById(db, organizationId, quote.clientId),
+    getOrg(),
+  ]);
+  const emailVars = {
+    client: quote.clientName,
+    numero: quote.number ?? undefined,
+    total: formatCentsEUR(quote.totalCents),
+    lien: publicUrl ?? undefined,
+    echeance: quote.validUntil
+      ? quote.validUntil.toLocaleDateString("fr-FR", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        })
+      : undefined,
+  };
+  const defaultSubject = renderEmailVariables(org.emailDefaults.quote.subject, emailVars);
+  const defaultBody = renderEmailVariables(org.emailDefaults.quote.body, emailVars);
+
   return (
     <>
       <PageHeader
         title={`Devis — ${quote.clientName}`}
         description={quote.number ?? "Brouillon (numéro attribué à l'émission)"}
       >
-        <QuoteDetailActions quote={quote} publicUrl={publicUrl} />
+        <QuoteDetailActions
+          quote={quote}
+          publicUrl={publicUrl}
+          defaultRecipient={client?.email ?? null}
+          defaultSubject={defaultSubject}
+          defaultBody={defaultBody}
+        />
       </PageHeader>
 
       <div className="grid gap-4 lg:grid-cols-3">

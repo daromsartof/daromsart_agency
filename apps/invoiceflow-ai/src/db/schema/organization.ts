@@ -31,6 +31,26 @@ export interface EmailDefaults {
 export const DEFAULT_LEGAL_FOOTER =
   "En cas de retard de paiement, une pénalité au taux de trois fois le taux d'intérêt légal est exigible, ainsi qu'une indemnité forfaitaire pour frais de recouvrement de 40 € (art. L441-10 et D441-5 du Code de commerce). Pas d'escompte pour paiement anticipé. TVA non applicable, art. 293 B du CGI, le cas échéant.";
 
+/**
+ * Textes d'email par défaut (H12), configurables dans Paramètres (story 22).
+ * Variables résolues à l'envoi par `renderEmailVariables` (@daromsart/core) :
+ * `{client}/{numero}/{total}/{lien}/{echeance}`.
+ */
+export const DEFAULT_EMAIL_DEFAULTS: EmailDefaults = {
+  quote: {
+    subject: "Votre devis {numero}",
+    body: "Bonjour {client},\n\nVeuillez trouver ci-joint notre devis {numero} d'un montant de {total}.\n\nVous pouvez le consulter et le signer en ligne : {lien}\n\nCe devis est valable jusqu'au {echeance}.\n\nN'hésitez pas à nous contacter pour toute question.\n\nCordialement.",
+  },
+  invoice: {
+    subject: "Votre facture {numero}",
+    body: "Bonjour {client},\n\nVeuillez trouver ci-joint notre facture {numero} d'un montant de {total}, à régler avant le {echeance}.\n\nVous pouvez la consulter en ligne : {lien}\n\nCordialement.",
+  },
+  reminder: {
+    subject: "Rappel — facture {numero} en attente de règlement",
+    body: "Bonjour {client},\n\nSauf erreur de notre part, notre facture {numero} d'un montant de {total}, échue le {echeance}, demeure impayée à ce jour.\n\nVous pouvez la consulter et procéder au règlement ici : {lien}\n\nMerci de bien vouloir régulariser dans les meilleurs délais.\n\nCordialement.",
+  },
+};
+
 /** L'entreprise émettrice (unique en pratique — multi-tenant prêt, H4). */
 export const organizations = pgTable("organizations", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -80,7 +100,10 @@ export const organizations = pgTable("organizations", {
     }),
 
   emailReplyTo: text("email_reply_to"),
-  emailDefaults: jsonb("email_defaults").$type<EmailDefaults>(),
+  emailDefaults: jsonb("email_defaults")
+    .$type<EmailDefaults>()
+    .notNull()
+    .default(DEFAULT_EMAIL_DEFAULTS),
 
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),

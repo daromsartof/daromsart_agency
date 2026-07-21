@@ -43,6 +43,13 @@
       "when": 1784654974565,
       "tag": "0005_normal_venus",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1784658645054,
+      "tag": "0006_equal_bloodaxe",
+      "breakpoints": true
     }
   ]
 }

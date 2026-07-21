@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Copy, Download, MoreHorizontal, Send, Trash2, XCircle } from "lucide-react";
+import { Copy, Download, Mail, MoreHorizontal, Send, Trash2, XCircle } from "lucide-react";
 import {
   Button,
   ConfirmDialog,
@@ -20,14 +20,25 @@ import {
   issueQuoteAction,
   markRefusedAction,
 } from "@/modules/quotes/actions";
+import { sendQuoteEmailAction } from "@/modules/emails/actions";
+import { SendDialog } from "@/modules/documents/components/send-dialog";
 import type { QuoteDetail } from "@/modules/quotes/queries";
 
 export interface QuoteDetailActionsProps {
   quote: QuoteDetail;
   publicUrl: string | null;
+  defaultRecipient: string | null;
+  defaultSubject: string;
+  defaultBody: string;
 }
 
-export function QuoteDetailActions({ quote, publicUrl }: QuoteDetailActionsProps) {
+export function QuoteDetailActions({
+  quote,
+  publicUrl,
+  defaultRecipient,
+  defaultSubject,
+  defaultBody,
+}: QuoteDetailActionsProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -90,24 +101,41 @@ export function QuoteDetailActions({ quote, publicUrl }: QuoteDetailActionsProps
   }
 
   const canRefuse = canTransition("quote", quote.status, "refused");
+  const alreadySent = quote.status !== "draft";
 
   return (
     <div className="flex items-center gap-2">
-      {quote.status === "draft" ? (
-        <Button size="sm" disabled={pending} onClick={handleIssue}>
-          <Send className="mr-2 h-4 w-4" />
-          Émettre
-        </Button>
-      ) : (
+      <SendDialog
+        trigger={
+          <Button size="sm" disabled={pending}>
+            <Mail className="mr-2 h-4 w-4" />
+            {alreadySent ? "Renvoyer" : "Envoyer"}
+          </Button>
+        }
+        defaultTo={defaultRecipient ? [defaultRecipient] : []}
+        defaultSubject={defaultSubject}
+        defaultBody={defaultBody}
+        willIssueFirst={!alreadySent}
+        attachmentLabel="Le PDF du devis sera joint automatiquement."
+        onSend={(input) => sendQuoteEmailAction(quote.id, input)}
+        onSuccess={() => router.refresh()}
+      />
+
+      {alreadySent ? (
         <Button asChild size="sm" variant="outline">
           <a href={`/api/documents/devis/${quote.id}/pdf`} target="_blank" rel="noreferrer">
             <Download className="mr-2 h-4 w-4" />
             Télécharger le PDF
           </a>
         </Button>
+      ) : (
+        <Button size="sm" variant="outline" disabled={pending} onClick={handleIssue}>
+          <Send className="mr-2 h-4 w-4" />
+          Émettre sans envoyer
+        </Button>
       )}
 
-      {quote.status === "draft" ? (
+      {!alreadySent ? (
         <Button asChild size="sm" variant="outline">
           <Link href={`/devis/${quote.id}/modifier`}>Modifier</Link>
         </Button>
@@ -136,7 +164,7 @@ export function QuoteDetailActions({ quote, publicUrl }: QuoteDetailActionsProps
               Marquer refusé
             </DropdownMenuItem>
           ) : null}
-          {quote.status === "draft" ? (
+          {!alreadySent ? (
             <DropdownMenuItem onSelect={() => setConfirmDelete(true)}>
               <Trash2 className="mr-2 h-4 w-4" />
               Supprimer
