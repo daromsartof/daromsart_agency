@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { getCurrentOrganizationId, requireSession } from "@/modules/auth/session";
 import { getClientDetail, getClientStats } from "@/modules/clients/queries";
 import { listQuotesForClient } from "@/modules/quotes/queries";
+import { listInvoicesForClient } from "@/modules/invoices/queries";
 import { db } from "@/db";
 import { ClientDetailClient } from "./client-detail-client";
 
@@ -25,6 +26,9 @@ export default async function ClientDetailPage({
 
   const stats = await getClientStats(db, organizationId, client.id);
   const quotes = await listQuotesForClient(db, organizationId, client.id);
+  const invoices = await listInvoicesForClient(db, organizationId, client.id);
 
-  return <ClientDetailClient client={client} stats={stats} quotes={quotes} />;
+  return (
+    <ClientDetailClient client={client} stats={stats} quotes={quotes} invoices={invoices} />
+  );
 }

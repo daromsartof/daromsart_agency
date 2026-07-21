@@ -8,13 +8,19 @@ import {
   clientContacts,
   clients,
   documentTemplates,
+  invoices,
   memberships,
   organizations,
+  payments,
   quotes,
   user,
 } from "./schema";
 import { env } from "../lib/env";
 import { createDraft, issueQuote } from "../modules/quotes/mutations";
+import {
+  createDraft as createInvoiceDraft,
+  issueInvoice,
+} from "../modules/invoices/mutations";
 import { createTemplate, setDefaultTemplate } from "../modules/templates/mutations";
 
 interface SeedClient {
@@ -343,6 +349,162 @@ async function main() {
     }
   } else {
     console.info(`• ${existingQuoteCount} devis déjà présents.`);
+  }
+
+  // 7. Factures de démonstration (brouillons, émises à échéance future, échues, payée, annulée).
+  const [{ count: existingInvoiceCount }] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(invoices)
+    .where(eq(invoices.organizationId, org.id));
+  if (existingInvoiceCount === 0) {
+    const invoiceClients = await db
+      .select({ id: clients.id })
+      .from(clients)
+      .where(and(eq(clients.organizationId, org.id), sql`${clients.archivedAt} is null`))
+      .limit(7);
+
+    if (invoiceClients.length < 7) {
+      console.warn("• Pas assez de clients pour semer 10 factures — étape ignorée.");
+    } else {
+      const [c1, c2, c3, c4, c5, c6, c7] = invoiceClients;
+      const issueDate = new Date();
+      const dueInFuture = new Date();
+      dueInFuture.setDate(dueInFuture.getDate() + 30);
+      const dueOverdue = new Date();
+      dueOverdue.setDate(dueOverdue.getDate() - 15);
+
+      // 3 brouillons.
+      await createInvoiceDraft(db, org.id, {
+        clientId: c1.id,
+        templateId: defaultTemplateId,
+        issueDate,
+        validUntil: dueInFuture,
+        lines: [
+          { description: "Développement fonctionnalité sur-mesure", quantity: 1, unitPriceCents: 280000, vatRate: 20 },
+        ],
+      });
+      await createInvoiceDraft(db, org.id, {
+        clientId: c2.id,
+        issueDate,
+        validUntil: dueInFuture,
+        lines: [
+          { description: "Prestation de conseil", quantity: 3, unitPriceCents: 60000, vatRate: 20 },
+        ],
+      });
+      await createInvoiceDraft(db, org.id, {
+        clientId: c3.id,
+        issueDate,
+        validUntil: dueInFuture,
+        globalDiscount: { type: "percent", value: 5 },
+        lines: [
+          { description: "Maintenance mensuelle", quantity: 1, unitPriceCents: 15000, vatRate: 20 },
+        ],
+      });
+
+      // 2 émises, échéance à venir (pas en retard).
+      const invoice4 = await createInvoiceDraft(db, org.id, {
+        clientId: c4.id,
+        issueDate,
+        validUntil: dueInFuture,
+        lines: [
+          { description: "Audit sécurité", quantity: 1, unitPriceCents: 120000, vatRate: 20 },
+        ],
+      });
+      if (invoice4.ok) await issueInvoice(db, org.id, invoice4.id);
+
+      const invoice5 = await createInvoiceDraft(db, org.id, {
+        clientId: c5.id,
+        issueDate,
+        validUntil: dueInFuture,
+        lines: [
+          { description: "Refonte identité visuelle", quantity: 1, unitPriceCents: 90000, vatRate: 0 },
+        ],
+      });
+      if (invoice5.ok) await issueInvoice(db, org.id, invoice5.id);
+
+      // 3 émises, échues (en retard — calculé, jamais stocké tel quel).
+      const invoice6 = await createInvoiceDraft(db, org.id, {
+        clientId: c6.id,
+        issueDate,
+        validUntil: dueOverdue,
+        lines: [
+          { description: "Formation équipe (1 jour)", quantity: 1, unitPriceCents: 80000, vatRate: 10 },
+        ],
+      });
+      if (invoice6.ok) await issueInvoice(db, org.id, invoice6.id);
+
+      const invoice7 = await createInvoiceDraft(db, org.id, {
+        clientId: c7.id,
+        issueDate,
+        validUntil: dueOverdue,
+        globalDiscount: { type: "amount", value: 5000 },
+        lines: [
+          { description: "Prestation A", quantity: 2, unitPriceCents: 45000, vatRate: 20 },
+        ],
+      });
+      if (invoice7.ok) await issueInvoice(db, org.id, invoice7.id);
+
+      const invoice8 = await createInvoiceDraft(db, org.id, {
+        clientId: c1.id,
+        issueDate,
+        validUntil: dueOverdue,
+        lines: [
+          { description: "Développement site vitrine", quantity: 1, unitPriceCents: 350000, vatRate: 20 },
+        ],
+      });
+      if (invoice8.ok) await issueInvoice(db, org.id, invoice8.id);
+
+      // 1 payée (règlement seed direct — pas de flux paiement avant la story 15).
+      const invoice9 = await createInvoiceDraft(db, org.id, {
+        clientId: c2.id,
+        issueDate,
+        validUntil: dueInFuture,
+        lines: [
+          { description: "Prestation B", quantity: 4, unitPriceCents: 25000, vatRate: 5.5 },
+        ],
+      });
+      if (invoice9.ok) {
+        await issueInvoice(db, org.id, invoice9.id);
+        const [row] = await db
+          .select({ totalCents: invoices.totalCents })
+          .from(invoices)
+          .where(eq(invoices.id, invoice9.id));
+        const paidAt = new Date();
+        await db
+          .update(invoices)
+          .set({ status: "paid", amountPaidCents: row.totalCents, paidAt })
+          .where(eq(invoices.id, invoice9.id));
+        // Ligne `payments` (structure posée story 12, flux réel story 15) —
+        // alimente "Encaissé ce mois-ci" sur `/factures` dès la démo.
+        await db.insert(payments).values({
+          invoiceId: invoice9.id,
+          paidAt,
+          amountCents: row.totalCents,
+          method: "transfer",
+        });
+      }
+
+      // 1 annulée.
+      const invoice10 = await createInvoiceDraft(db, org.id, {
+        clientId: c3.id,
+        issueDate,
+        validUntil: dueInFuture,
+        lines: [
+          { description: "Prestation ponctuelle annulée", quantity: 1, unitPriceCents: 50000, vatRate: 20 },
+        ],
+      });
+      if (invoice10.ok) {
+        await issueInvoice(db, org.id, invoice10.id);
+        await db
+          .update(invoices)
+          .set({ status: "cancelled", cancelledAt: new Date() })
+          .where(eq(invoices.id, invoice10.id));
+      }
+
+      console.info("✓ 10 factures de démonstration créées (brouillons, émises, échues, payée, annulée).");
+    }
+  } else {
+    console.info(`• ${existingInvoiceCount} facture(s) déjà présentes.`);
   }
 
   console.info("Seed terminé.");
