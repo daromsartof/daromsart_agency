@@ -13,6 +13,7 @@ const EVENT_LABELS: Record<string, string> = {
   expired: "Expiré",
   converted: "Converti en facture",
   payment_recorded: "Paiement enregistré",
+  payment_deleted: "Paiement supprimé",
   reminded: "Relance envoyée",
   cancelled: "Annulé",
 };

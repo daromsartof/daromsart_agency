@@ -29,14 +29,26 @@ const QUOTE_TRANSITIONS: Record<QuoteStatus, QuoteStatus[]> = {
   invoiced: [],
 };
 
+/**
+ * `issued`/`sent` → `partially_paid`/`paid` (story 15) : un paiement peut
+ * arriver avant même que le client n'ait consulté la facture (règlement
+ * comptant, virement anticipé…) — `recordPayment` exige seulement que la
+ * facture soit émise (ni `draft` ni `cancelled`), pas qu'elle soit `viewed`.
+ * `paid → partially_paid` : SEULE transition arrière, empruntée exclusivement
+ * par `deletePayment` (suppression admin d'un paiement qui faisait passer la
+ * facture sous le seuil `paid` — jamais déclenchée par une action utilisateur
+ * directe). Toute autre régression (retour à `issued`/`sent`/`viewed`) n'est
+ * PAS modélisée : si `deletePayment` ramène `amount_paid_cents` à zéro, le
+ * statut reste `partially_paid` plutôt que de reconstruire un état antérieur.
+ */
 const INVOICE_TRANSITIONS: Record<InvoiceStatus, InvoiceStatus[]> = {
   draft: ["issued"],
-  issued: ["sent", "cancelled"],
-  sent: ["viewed", "overdue", "cancelled"],
+  issued: ["sent", "cancelled", "partially_paid", "paid"],
+  sent: ["viewed", "overdue", "cancelled", "partially_paid", "paid"],
   viewed: ["partially_paid", "paid", "overdue", "cancelled"],
   partially_paid: ["paid", "overdue", "cancelled"],
   overdue: ["partially_paid", "paid", "cancelled"],
-  paid: [],
+  paid: ["partially_paid"],
   cancelled: [],
 };
 

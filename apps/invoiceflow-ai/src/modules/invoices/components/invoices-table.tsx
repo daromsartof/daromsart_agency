@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Copy, MoreHorizontal, Receipt, Trash2 } from "lucide-react";
+import { Copy, CreditCard, MoreHorizontal, Receipt, Trash2 } from "lucide-react";
 import {
   Button,
   ConfirmDialog,
@@ -21,7 +21,9 @@ import {
 import {
   deleteInvoiceAction,
   duplicateInvoiceAction,
+  recordPaymentAction,
 } from "@/modules/invoices/actions";
+import { PaymentDialog } from "@/modules/invoices/components/payment-dialog";
 import type { InvoiceRow } from "@/modules/invoices/queries";
 
 function formatDateShort(date: Date): string {
@@ -50,6 +52,7 @@ export function InvoicesTable({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [deleteTarget, setDeleteTarget] = useState<InvoiceRow | null>(null);
+  const [paymentTarget, setPaymentTarget] = useState<InvoiceRow | null>(null);
 
   function handleDuplicate(invoice: InvoiceRow) {
     startTransition(async () => {
@@ -116,6 +119,15 @@ export function InvoicesTable({
       ),
     },
     {
+      id: "remainingCents",
+      header: "Reste dû",
+      cell: ({ row }) => (
+        <span className="tabular-nums">
+          {formatCentsEUR(row.original.totalCents - row.original.amountPaidCents)}
+        </span>
+      ),
+    },
+    {
       id: "status",
       header: "Statut",
       cell: ({ row }) => <StatusBadge status={row.original.status} />,
@@ -149,6 +161,14 @@ export function InvoicesTable({
               <Copy className="mr-2 h-4 w-4" />
               Dupliquer
             </DropdownMenuItem>
+            {row.original.status !== "draft" &&
+            row.original.status !== "cancelled" &&
+            row.original.totalCents - row.original.amountPaidCents > 0 ? (
+              <DropdownMenuItem onSelect={() => setPaymentTarget(row.original)}>
+                <CreditCard className="mr-2 h-4 w-4" />
+                Enregistrer un paiement
+              </DropdownMenuItem>
+            ) : null}
             {row.original.status === "draft" ? (
               <DropdownMenuItem
                 disabled={pending}
@@ -190,6 +210,18 @@ export function InvoicesTable({
         confirmLabel="Supprimer"
         onConfirm={confirmDelete}
       />
+      {paymentTarget ? (
+        <PaymentDialog
+          open={paymentTarget !== null}
+          onOpenChange={(open) => !open && setPaymentTarget(null)}
+          remainingCents={paymentTarget.totalCents - paymentTarget.amountPaidCents}
+          onRecord={(input) => recordPaymentAction(paymentTarget.id, input)}
+          onSuccess={() => {
+            setPaymentTarget(null);
+            router.refresh();
+          }}
+        />
+      ) : null}
     </>
   );
 }

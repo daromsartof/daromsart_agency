@@ -17,11 +17,13 @@ import {
 import { renderEmailVariables } from "@daromsart/core";
 import { db } from "@/db";
 import { env } from "@/lib/env";
-import { getCurrentOrganizationId, requireSession } from "@/modules/auth/session";
+import { getCurrentOrganizationId, getMembershipRole, requireSession } from "@/modules/auth/session";
 import { listDocumentEvents } from "@/modules/documents/events";
 import { EventTimeline } from "@/modules/documents/components/event-timeline";
 import { InvoiceDetailActions } from "@/modules/invoices/components/invoice-detail-actions";
+import { PaymentCard } from "@/modules/invoices/components/payment-card";
 import { getInvoiceById } from "@/modules/invoices/queries";
+import { listPaymentsForInvoice } from "@/modules/invoices/payments";
 import { getClientById } from "@/modules/clients/queries";
 import { getOrg } from "@/modules/organization/queries";
 
@@ -58,10 +60,13 @@ export default async function FactureDetailPage({
   const bic = invoice.organizationSnapshot?.bic;
 
   const publicUrl = invoice.shareToken ? `${env.APP_URL}/p/factures/${invoice.shareToken}` : null;
-  const [client, org] = await Promise.all([
+  const [client, org, invoicePayments, role] = await Promise.all([
     getClientById(db, organizationId, invoice.clientId),
     getOrg(),
+    listPaymentsForInvoice(db, invoice.id),
+    getMembershipRole(session.user.id, organizationId),
   ]);
+  const canRecordPayment = invoice.status !== "draft" && invoice.status !== "cancelled";
   const emailVars = {
     client: invoice.clientName,
     numero: invoice.number ?? undefined,
@@ -189,14 +194,14 @@ export default async function FactureDetailPage({
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Paiement</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-muted-foreground">
-              Le suivi des paiements sera disponible prochainement.
-            </CardContent>
-          </Card>
+          <PaymentCard
+            invoiceId={invoice.id}
+            totalCents={invoice.totalCents}
+            amountPaidCents={invoice.amountPaidCents}
+            payments={invoicePayments}
+            isAdmin={role === "admin"}
+            canRecord={canRecordPayment}
+          />
 
           <Card>
             <CardHeader>

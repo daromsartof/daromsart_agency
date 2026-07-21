@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
@@ -43,8 +43,20 @@ export function QuotesPageClient({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [search, setSearch] = useState(query);
+  // Ignore l'exécution de l'effet au montage (ou à un remount) : `search`
+  // vaut déjà `query` à ce moment-là, un push serait redondant — et surtout
+  // dangereux s'il reste en attente pendant qu'une navigation ailleurs
+  // (ex. clic sur une ligne juste après un changement d'onglet) est en
+  // cours : le push tardif écraserait l'URL cible avec des params obsolètes
+  // capturés par la closure. Ne planifier un push qu'en réaction à une
+  // VRAIE saisie utilisateur ultérieure.
+  const skipNextPush = useRef(true);
 
   useEffect(() => {
+    if (skipNextPush.current) {
+      skipNextPush.current = false;
+      return;
+    }
     const handle = setTimeout(() => {
       const params = new URLSearchParams(searchParams.toString());
       if (search.trim()) {
