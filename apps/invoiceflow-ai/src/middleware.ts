@@ -1,17 +1,22 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
 
-/** Routes accessibles sans session (préfixes). */
-const PUBLIC_PREFIXES = [
+/** Routes d'authentification, accessibles sans session mais redirigées si déjà connecté. */
+const AUTH_PREFIXES = [
   "/connexion",
   "/mot-de-passe-oublie",
   "/reinitialiser",
 ];
 
-function isPublic(pathname: string): boolean {
-  return PUBLIC_PREFIXES.some(
-    (p) => pathname === p || pathname.startsWith(`${p}/`),
-  );
+/**
+ * Accès public par token (story 11) : toujours accessible, session ou non —
+ * ne redirige JAMAIS (un admin qui suit son propre lien public doit pouvoir
+ * le consulter tel qu'un client le verrait).
+ */
+const ALWAYS_ACCESSIBLE_PREFIXES = ["/p"];
+
+function matchesPrefix(pathname: string, prefixes: string[]): boolean {
+  return prefixes.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
 /**
@@ -22,10 +27,15 @@ function isPublic(pathname: string): boolean {
  */
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const hasSession = Boolean(getSessionCookie(request));
-  const publicRoute = isPublic(pathname);
 
-  if (!hasSession && !publicRoute) {
+  if (matchesPrefix(pathname, ALWAYS_ACCESSIBLE_PREFIXES)) {
+    return NextResponse.next();
+  }
+
+  const hasSession = Boolean(getSessionCookie(request));
+  const authRoute = matchesPrefix(pathname, AUTH_PREFIXES);
+
+  if (!hasSession && !authRoute) {
     const url = new URL("/connexion", request.url);
     if (pathname !== "/") {
       url.searchParams.set("next", pathname);
@@ -33,7 +43,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (hasSession && publicRoute) {
+  if (hasSession && authRoute) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 

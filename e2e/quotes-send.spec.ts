@@ -22,6 +22,10 @@ test.describe("Envoi de devis", () => {
     await page.goto("/devis");
     // Un des 2 devis déjà émis du seed : le lien de navigation est sur le nom
     // du client (seed déterministe : "Atelier Lumière SARL" → DEV-2026-0001).
+    // Recherche explicite : après de nombreux runs e2e cumulés (chaque run de
+    // quotes.spec.ts/sign-quote.spec.ts crée de nouveaux devis "Nova Digital"),
+    // la ligne seedée peut sortir de la première page de la liste non filtrée.
+    await page.getByPlaceholder("Rechercher un devis…").fill("Atelier");
     await page.getByRole("link", { name: "Atelier Lumière SARL" }).first().click();
     // Première visite de /devis/[id] depuis le démarrage du serveur dev (ou
     // après un edit qui invalide le cache de compilation à la volée) :

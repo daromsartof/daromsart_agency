@@ -5,11 +5,13 @@ import { Resend } from "resend";
 import { render } from "@react-email/render";
 import { DocumentEmail } from "./templates/document-email";
 import { ResetPasswordEmail } from "./templates/reset-password-email";
+import { SignatureConfirmationEmail } from "./templates/signature-confirmation";
 import type {
   MailerConfig,
   SendDocumentEmailParams,
   SendEmailResult,
   SendResetPasswordEmailParams,
+  SendSignatureConfirmationParams,
 } from "./types";
 
 /** Marge de sécurité sous la limite réelle de Resend (40 Mo) — nos PDF font < 1 Mo. */
@@ -18,6 +20,9 @@ const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
 export interface Mailer {
   sendDocumentEmail(params: SendDocumentEmailParams): Promise<SendEmailResult>;
   sendResetPasswordEmail(params: SendResetPasswordEmailParams): Promise<SendEmailResult>;
+  sendSignatureConfirmation(
+    params: SendSignatureConfirmationParams,
+  ): Promise<SendEmailResult>;
 }
 
 function fakeId(prefix: string): string {
@@ -94,6 +99,21 @@ export function createMailer(config: MailerConfig): Mailer {
         to: [params.to],
         subject: "Réinitialisation de votre mot de passe",
         react: <ResetPasswordEmail url={params.url} />,
+      });
+    },
+    async sendSignatureConfirmation(params) {
+      const withinLimit =
+        !params.pdfBuffer || params.pdfBuffer.byteLength <= MAX_ATTACHMENT_BYTES;
+      return dispatch({
+        to: [params.to],
+        subject: params.forOrganization
+          ? `Devis ${params.quoteNumber} signé`
+          : `Signature confirmée — devis ${params.quoteNumber}`,
+        react: <SignatureConfirmationEmail {...params} />,
+        attachment:
+          withinLimit && params.pdfBuffer && params.pdfFilename
+            ? { filename: params.pdfFilename, content: params.pdfBuffer }
+            : undefined,
       });
     },
   };

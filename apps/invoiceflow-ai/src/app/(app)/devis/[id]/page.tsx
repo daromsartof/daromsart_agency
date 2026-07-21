@@ -17,11 +17,12 @@ import {
 import { renderEmailVariables } from "@daromsart/core";
 import { db } from "@/db";
 import { env } from "@/lib/env";
+import { storage } from "@/lib/storage";
 import { getCurrentOrganizationId, requireSession } from "@/modules/auth/session";
 import { listDocumentEvents } from "@/modules/documents/events";
 import { EventTimeline } from "@/modules/documents/components/event-timeline";
 import { QuoteDetailActions } from "@/modules/quotes/components/quote-detail-actions";
-import { getQuoteById } from "@/modules/quotes/queries";
+import { getQuoteById, getQuoteSignature } from "@/modules/quotes/queries";
 import { getClientById } from "@/modules/clients/queries";
 import { getOrg } from "@/modules/organization/queries";
 
@@ -75,6 +76,10 @@ export default async function DevisDetailPage({
   };
   const defaultSubject = renderEmailVariables(org.emailDefaults.quote.subject, emailVars);
   const defaultBody = renderEmailVariables(org.emailDefaults.quote.body, emailVars);
+
+  const signature =
+    quote.status === "signed" ? await getQuoteSignature(db, organizationId, quote.id) : null;
+  const signatureImageUrl = signature ? await storage.getSignedUrl(signature.imageKey) : null;
 
   return (
     <>
@@ -178,6 +183,31 @@ export default async function DevisDetailPage({
               </div>
             </CardContent>
           </Card>
+
+          {signature ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Signature</CardTitle>
+              </CardHeader>
+              <CardContent className="flex items-center gap-4">
+                {signatureImageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- data/signée, pas un asset Next Image.
+                  <img
+                    src={signatureImageUrl}
+                    alt={`Signature de ${signature.name}`}
+                    className="h-16 w-40 rounded border bg-white object-contain"
+                  />
+                ) : null}
+                <div className="text-sm">
+                  <p className="font-medium">{signature.name}</p>
+                  {signature.email ? (
+                    <p className="text-muted-foreground">{signature.email}</p>
+                  ) : null}
+                  <p className="text-muted-foreground">{formatDateLong(signature.signedAt)}</p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
 
           <Card>
             <CardHeader>

@@ -145,6 +145,16 @@ function formatDate(date: Date | null): string {
   return date.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
+function formatDateTime(date: Date): string {
+  return date.toLocaleString("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function formatQuantity(qty: number): string {
   return qty.toLocaleString("fr-FR", { maximumFractionDigits: 3 });
 }
@@ -318,9 +328,17 @@ export function DocumentPdf({ data }: { data: DocumentPdfInput }) {
             {data.signature ? (
               <>
                 <Text style={{ fontSize: 8, color: "#71717a", marginBottom: 4 }}>
-                  Signé par {data.signature.name} le {formatDate(data.signature.signedAt)}
+                  Signé par {data.signature.name}
+                  {data.signature.email ? ` (${data.signature.email})` : ""} le{" "}
+                  {formatDateTime(data.signature.signedAt)}
+                  {data.signature.ip ? ` depuis ${data.signature.ip}` : ""}
                 </Text>
                 <Image src={data.signature.imageDataUrl} style={styles.signatureImage} />
+                {data.signature.originalPdfHash ? (
+                  <Text style={{ fontSize: 6, color: "#a1a1aa", marginTop: 4 }}>
+                    Empreinte SHA-256 du document original : {data.signature.originalPdfHash}
+                  </Text>
+                ) : null}
               </>
             ) : (
               <Text style={{ fontSize: 8, color: "#a1a1aa" }}>

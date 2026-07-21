@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import {
   DEFAULT_PDF_TEMPLATE_OPTIONS,
+  renderDocumentPdf,
   type DocumentPdfInput,
   type PdfAddress,
   type PdfTemplateOptions,
@@ -173,4 +174,40 @@ export async function buildQuotePdfInput(
     template: templateOptions,
     publicUrl: quote.shareToken ? `${env.APP_URL}/p/devis/${quote.shareToken}` : null,
   };
+}
+
+export interface QuotePdfFile {
+  buffer: Buffer;
+  filename: string;
+}
+
+/**
+ * PDF servi pour un devis : l'archive signée une fois `pdfSignedKey` posé
+ * (jamais reconstruit — c'est le document qui fait foi, hash inclus), sinon
+ * rendu à la volée (brouillon/émis non signé). Jamais l'inverse : on ne
+ * stocke jamais le PDF non signé (plans/story-11.md).
+ */
+export async function resolveQuotePdfBuffer(
+  db: AppDb,
+  storage: Storage,
+  organizationId: string,
+  quoteId: string,
+): Promise<QuotePdfFile | null> {
+  const quote = await getQuoteById(db, organizationId, quoteId);
+  if (!quote) return null;
+
+  if (quote.pdfSignedKey) {
+    const archived = await storage.get(quote.pdfSignedKey);
+    if (archived) {
+      return {
+        buffer: archived,
+        filename: `devis-signe-${quote.number ?? quote.id}.pdf`,
+      };
+    }
+  }
+
+  const input = await buildQuotePdfInput(db, storage, organizationId, quoteId);
+  if (!input) return null;
+  const buffer = await renderDocumentPdf(input);
+  return { buffer, filename: `devis-${quote.number ?? "brouillon"}.pdf` };
 }

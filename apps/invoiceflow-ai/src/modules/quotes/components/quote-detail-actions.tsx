@@ -125,7 +125,7 @@ export function QuoteDetailActions({
         <Button asChild size="sm" variant="outline">
           <a href={`/api/documents/devis/${quote.id}/pdf`} target="_blank" rel="noreferrer">
             <Download className="mr-2 h-4 w-4" />
-            Télécharger le PDF
+            {quote.status === "signed" ? "Télécharger le PDF signé" : "Télécharger le PDF"}
           </a>
         </Button>
       ) : (

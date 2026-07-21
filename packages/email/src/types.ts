@@ -24,6 +24,20 @@ export interface SendResetPasswordEmailParams {
   url: string;
 }
 
+export interface SendSignatureConfirmationParams {
+  to: string;
+  organizationName: string;
+  accentColor: string;
+  quoteNumber: string;
+  clientName: string;
+  signerName: string;
+  forOrganization: boolean;
+  publicUrl: string;
+  /** PDF signé joint (facultatif — l'email interne à l'org peut s'en passer). */
+  pdfBuffer?: Buffer;
+  pdfFilename?: string;
+}
+
 export type SendEmailResult =
   | { ok: true; id: string; mode: "resend" | "dev-preview" }
   | { ok: false; error: string };

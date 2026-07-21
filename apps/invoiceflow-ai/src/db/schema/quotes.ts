@@ -46,8 +46,14 @@ export const quotes = pgTable(
     notes: text("notes"),
 
     sentAt: timestamp("sent_at"),
+    viewedAt: timestamp("viewed_at"),
+    signedAt: timestamp("signed_at"),
     refusedAt: timestamp("refused_at"),
     refusalReason: text("refusal_reason"),
+    /** Archivés après signature (story 11) — jamais le PDF non signé. */
+    pdfSignedKey: text("pdf_signed_key"),
+    /** SHA-256 (hex) du PDF signé archivé — recalculable pour vérification. */
+    pdfHash: text("pdf_hash"),
 
     globalDiscountType: text("global_discount_type").$type<"percent" | "amount">(),
     /** Pourcentage (ex. 12.50) si `globalDiscountType = "percent"`, sinon centimes. */

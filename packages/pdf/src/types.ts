@@ -79,9 +79,13 @@ export interface PdfQrCode {
 
 export interface PdfSignature {
   name: string;
+  email?: string | null;
   signedAt: Date;
   /** Data URL PNG du tracé signé. */
   imageDataUrl: string;
+  ip?: string | null;
+  /** SHA-256 (hex) du PDF AVANT signature — imprimé comme preuve de contenu (H9). */
+  originalPdfHash?: string | null;
 }
 
 export interface PdfTemplateOptions {

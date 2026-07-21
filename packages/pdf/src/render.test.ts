@@ -95,9 +95,12 @@ describe("renderDocumentPdf", () => {
         ],
         signature: {
           name: "Jean Dupont",
-          signedAt: new Date("2026-07-05"),
+          email: "jean.dupont@example.com",
+          signedAt: new Date("2026-07-05T14:32:00Z"),
           imageDataUrl:
             "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+          ip: "203.0.113.42",
+          originalPdfHash: "abcd1234efgh5678",
         },
       }),
     );
