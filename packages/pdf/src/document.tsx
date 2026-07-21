@@ -1,6 +1,6 @@
 import { Document, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import { formatEUR } from "@daromsart/core";
-import { registerFonts, PDF_FONT_FAMILY } from "./fonts";
+import { fontFamilyFor, registerFonts, SANS_FONT_FAMILY } from "./fonts";
 import type { DocumentPdfInput, PdfAddress } from "./types";
 
 registerFonts();
@@ -13,7 +13,7 @@ const KIND_LABEL: Record<DocumentPdfInput["meta"]["kind"], string> = {
 
 const styles = StyleSheet.create({
   page: {
-    fontFamily: PDF_FONT_FAMILY,
+    fontFamily: SANS_FONT_FAMILY,
     fontSize: 9,
     color: "#1f1f29",
     paddingTop: 28,
@@ -165,10 +165,19 @@ export function DocumentPdf({ data }: { data: DocumentPdfInput }) {
       author={organization.legalName}
       producer="InvoiceFlow AI"
     >
-      <Page size="A4" style={styles.page} wrap>
+      <Page
+        size="A4"
+        style={[styles.page, { fontFamily: fontFamilyFor(template.font) }]}
+        wrap
+      >
         <View style={[styles.accentBand, { backgroundColor: template.accentColor }]} fixed />
 
-        <View style={styles.headerRow}>
+        <View
+          style={[
+            styles.headerRow,
+            template.logoPosition === "right" ? { flexDirection: "row-reverse" as const } : {},
+          ]}
+        >
           {template.showLogo && organization.logoDataUrl ? (
             <Image src={organization.logoDataUrl} style={styles.logo} />
           ) : (

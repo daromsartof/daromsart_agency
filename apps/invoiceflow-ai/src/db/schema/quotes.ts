@@ -11,6 +11,7 @@ import {
 import type { QuoteStatus } from "@daromsart/core";
 import { clients } from "./clients";
 import { organizations } from "./organization";
+import { documentTemplates } from "./templates";
 
 /**
  * Devis. Les totaux (`subtotalCents`/`discountCents`/`vatByRate`/`totalCents`)
@@ -31,6 +32,10 @@ export const quotes = pgTable(
     clientId: uuid("client_id")
       .notNull()
       .references(() => clients.id, { onDelete: "restrict" }),
+    /** Nul → modèle par défaut de l'organisation appliqué au rendu (story 09). */
+    templateId: uuid("template_id").references(() => documentTemplates.id, {
+      onDelete: "set null",
+    }),
 
     status: text("status").$type<QuoteStatus>().notNull().default("draft"),
     number: text("number"),

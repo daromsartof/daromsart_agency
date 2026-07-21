@@ -9,6 +9,18 @@ const navEntries = [
   { name: "Paramètres", path: "/parametres" },
 ];
 
+test.beforeEach(async ({ page }) => {
+  await page.goto("/connexion");
+  await page.getByLabel("Email").fill(process.env.SEED_ADMIN_EMAIL ?? "");
+  await page
+    .getByLabel("Mot de passe")
+    .fill(process.env.SEED_ADMIN_PASSWORD ?? "");
+  await page.getByRole("button", { name: "Se connecter" }).click();
+  // Premier hit après démarrage du serveur dev : compilation à la volée des
+  // routes (auth + page d'accueil), plus lente qu'un timeout par défaut.
+  await expect(page).toHaveURL("/", { timeout: 15_000 });
+});
+
 test("la navigation affiche les 6 entrées et chaque page répond", async ({
   page,
 }) => {

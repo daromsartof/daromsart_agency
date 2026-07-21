@@ -22,6 +22,7 @@ export type DocumentLineFormValues = z.infer<typeof documentLineFormSchema>;
 export const documentFormSchema = z.object({
   clientId: z.string().uuid("Le client est requis."),
   clientLabel: z.string().optional(),
+  templateId: z.string(),
   issueDate: z.date().optional(),
   validUntil: z.date().optional(),
   notes: z.string().trim().optional(),
@@ -43,12 +44,14 @@ export const EMPTY_LINE: DocumentLineFormValues = {
 export function emptyDocumentFormValues(
   defaultVatRate: number,
   validityDays: number,
+  defaultTemplateId = "",
 ): DocumentFormValues {
   const validUntil = new Date();
   validUntil.setDate(validUntil.getDate() + validityDays);
   return {
     clientId: "",
     clientLabel: "",
+    templateId: defaultTemplateId,
     issueDate: new Date(),
     validUntil,
     notes: "",
@@ -93,6 +96,7 @@ export function documentFormToDraftInput(
 ): DocumentDraftInput {
   return {
     clientId: values.clientId,
+    templateId: values.templateId || null,
     issueDate: values.issueDate,
     validUntil: values.validUntil,
     notes: values.notes || undefined,

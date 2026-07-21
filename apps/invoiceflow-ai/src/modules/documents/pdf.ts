@@ -3,12 +3,14 @@ import {
   DEFAULT_PDF_TEMPLATE_OPTIONS,
   type DocumentPdfInput,
   type PdfAddress,
+  type PdfTemplateOptions,
 } from "@daromsart/pdf";
 import type { Storage } from "@daromsart/storage";
 import type { AppDb } from "../../db/types";
 import { organizations } from "../../db/schema";
 import { getClientById } from "../clients/queries";
 import { getQuoteById } from "../quotes/queries";
+import { getDefaultTemplate, getTemplateById } from "../templates/queries";
 import { env } from "../../lib/env";
 
 /**
@@ -16,9 +18,30 @@ import { env } from "../../lib/env";
  * devis. Toutes les données binaires (logo) sont résolues en data URL ICI
  * (lecture storage), jamais au moment du rendu — le rendu PDF ne fait aucun
  * accès réseau/disque (parade « logo distant dans le PDF », plans/story-08.md).
- * Modèles de rendu réels (couleurs, colonnes) : story 09 — options neutres
- * en dur pour l'instant (`DEFAULT_PDF_TEMPLATE_OPTIONS`).
+ * Modèle appliqué (story 09) : `quote.templateId` s'il est défini, sinon le
+ * modèle par défaut de l'organisation pour les devis, sinon les options
+ * neutres codées en dur (aucun modèle configuré).
  */
+
+async function resolveTemplateOptions(
+  db: AppDb,
+  organizationId: string,
+  templateId: string | null,
+): Promise<{ pdf: PdfTemplateOptions; headerFooter: string | null }> {
+  const template = templateId
+    ? await getTemplateById(db, organizationId, templateId)
+    : await getDefaultTemplate(db, organizationId, "quote");
+  if (!template) {
+    return { pdf: DEFAULT_PDF_TEMPLATE_OPTIONS, headerFooter: null };
+  }
+  const { accentColor, showLogo, logoPosition, font, columns, footerNote, paymentTermsText } =
+    template.options;
+  const combinedFooter = [footerNote, paymentTermsText].filter(Boolean).join("\n");
+  return {
+    pdf: { accentColor, showLogo, logoPosition, font, columns },
+    headerFooter: combinedFooter || null,
+  };
+}
 
 function mimeFromKey(key: string): string {
   const lower = key.toLowerCase();
@@ -87,6 +110,11 @@ export async function buildQuotePdfInput(
   if (!client) return null;
 
   const logoDataUrl = await resolveLogoDataUrl(storage, org.logoKey);
+  const { pdf: templateOptions, headerFooter } = await resolveTemplateOptions(
+    db,
+    organizationId,
+    quote.templateId,
+  );
 
   return {
     organization: {
@@ -140,9 +168,9 @@ export async function buildQuotePdfInput(
       totalCents: quote.totalCents,
     },
     introNote: quote.notes,
-    footerNote: null,
+    footerNote: headerFooter,
     legalFooter: org.legalFooter,
-    template: DEFAULT_PDF_TEMPLATE_OPTIONS,
+    template: templateOptions,
     publicUrl: quote.shareToken ? `${env.APP_URL}/p/devis/${quote.shareToken}` : null,
   };
 }

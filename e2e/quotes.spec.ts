@@ -13,7 +13,8 @@ test.describe("Devis", () => {
       .getByLabel("Mot de passe")
       .fill(process.env.SEED_ADMIN_PASSWORD ?? "");
     await page.getByRole("button", { name: "Se connecter" }).click();
-    await expect(page).toHaveURL("/");
+    // Premier hit après démarrage du serveur dev : compilation à la volée.
+    await expect(page).toHaveURL("/", { timeout: 15_000 });
   });
 
   test("crée un devis à 3 lignes multi-taux, réordonne, supprime une ligne, et le retrouve en Brouillon", async ({
@@ -40,6 +41,18 @@ test.describe("Devis", () => {
       .last()
       .click();
     await expect(page.locator("input[placeholder='Description']")).toHaveCount(2);
+
+    // Régression : Radix interdit `<SelectItem value="">` (throw au rendu du
+    // popover) — le sentinel dédié (document-form.tsx) doit permettre
+    // d'ouvrir et choisir ces menus sans crasher le formulaire.
+    await page.getByRole("combobox", { name: "Modèle" }).click();
+    await page.getByRole("option", { name: "Modèle par défaut" }).click();
+
+    await page.getByRole("combobox", { name: "Remise globale" }).click();
+    await page.getByRole("option", { name: "Pourcentage" }).click();
+    await expect(page.getByRole("combobox", { name: "Remise globale" })).toHaveText(
+      "Pourcentage",
+    );
 
     await page.getByRole("button", { name: "Créer le devis" }).click();
 

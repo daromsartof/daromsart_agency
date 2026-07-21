@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { PageHeader, toast } from "@daromsart/ui";
-import { DocumentForm } from "@/modules/documents/document-form";
+import { DocumentForm, type DocumentTemplateOption } from "@/modules/documents/document-form";
 import { updateQuoteAction } from "@/modules/quotes/actions";
 import { quoteToFormValues } from "@/modules/quotes/quote-to-form-values";
 import type { QuoteDetail } from "@/modules/quotes/queries";
@@ -10,11 +10,13 @@ import type { QuoteDetail } from "@/modules/quotes/queries";
 export interface ModifierDevisClientProps {
   quote: QuoteDetail;
   vatRateOptions: number[];
+  templateOptions: DocumentTemplateOption[];
 }
 
 export function ModifierDevisClient({
   quote,
   vatRateOptions,
+  templateOptions,
 }: ModifierDevisClientProps) {
   const router = useRouter();
 
@@ -27,6 +29,7 @@ export function ModifierDevisClient({
       <DocumentForm
         defaultValues={quoteToFormValues(quote)}
         vatRateOptions={vatRateOptions}
+        templateOptions={templateOptions}
         submitLabel="Enregistrer"
         onSubmit={(input) => updateQuoteAction(quote.id, input)}
         onSuccess={() => {
