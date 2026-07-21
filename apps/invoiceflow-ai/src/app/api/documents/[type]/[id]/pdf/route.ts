@@ -1,9 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { renderDocumentPdf } from "@daromsart/pdf";
 import { db } from "@/db";
 import { storage } from "@/lib/storage";
 import { getCurrentOrganizationId, requireSession } from "@/modules/auth/session";
-import { buildQuotePdfInput } from "@/modules/documents/pdf";
+import { resolveQuotePdfBuffer } from "@/modules/documents/pdf";
 
 // @react-pdf/renderer utilise des API Node (buffers, fontkit) indisponibles
 // en edge runtime.
@@ -21,18 +20,17 @@ export async function GET(
     return NextResponse.json({ error: "Introuvable" }, { status: 404 });
   }
 
-  const input = await buildQuotePdfInput(db, storage, organizationId, params.id);
-  if (!input) {
+  // Sert l'archive signée si elle existe (jamais reconstruite), sinon un
+  // rendu à la volée (story 11).
+  const file = await resolveQuotePdfBuffer(db, storage, organizationId, params.id);
+  if (!file) {
     return NextResponse.json({ error: "Introuvable" }, { status: 404 });
   }
 
-  const buffer = await renderDocumentPdf(input);
-  const filename = `devis-${input.meta.number ?? "brouillon"}.pdf`;
-
-  return new NextResponse(new Uint8Array(buffer), {
+  return new NextResponse(new Uint8Array(file.buffer), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="${filename}"`,
+      "Content-Disposition": `inline; filename="${file.filename}"`,
     },
   });
 }

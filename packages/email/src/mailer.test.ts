@@ -67,6 +67,39 @@ describe("createMailer — mode dev (sans apiKey)", () => {
     expect(html).toContain("reinitialiser/tok123");
   });
 
+  it("écrit un aperçu HTML pour la confirmation de signature (client et organisation)", async () => {
+    const mailer = createMailer({ from: "InvoiceFlow <no-reply@example.com>", previewDir });
+
+    const clientResult = await mailer.sendSignatureConfirmation({
+      to: "client@example.com",
+      organizationName: "Daromsart",
+      accentColor: "#7367F0",
+      quoteNumber: "DEV-2026-0001",
+      clientName: "Client Test",
+      signerName: "Jean Dupont",
+      forOrganization: false,
+      publicUrl: "https://app.example.com/p/devis/abc123",
+      pdfBuffer: Buffer.from("%PDF-fake"),
+      pdfFilename: "devis-signe.pdf",
+    });
+    expect(clientResult.ok).toBe(true);
+
+    const orgResult = await mailer.sendSignatureConfirmation({
+      to: "admin@example.com",
+      organizationName: "Daromsart",
+      accentColor: "#7367F0",
+      quoteNumber: "DEV-2026-0001",
+      clientName: "Client Test",
+      signerName: "Jean Dupont",
+      forOrganization: true,
+      publicUrl: "https://app.example.com/p/devis/abc123",
+    });
+    expect(orgResult.ok).toBe(true);
+
+    const files = await readdir(previewDir);
+    expect(files).toHaveLength(2);
+  });
+
   it("envoie sans pièce jointe si le PDF dépasse la limite de sécurité (10 Mo)", async () => {
     const mailer = createMailer({ from: "InvoiceFlow <no-reply@example.com>", previewDir });
     const bigBuffer = Buffer.alloc(11 * 1024 * 1024);

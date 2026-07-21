@@ -18,6 +18,10 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   workers: 1,
   reporter: "list",
+  // Next dev compile à la volée : un test qui enchaîne plusieurs routes
+  // jamais visitées (ex. nouveau → détail → page publique) peut cumuler
+  // largement plus que les 30 s par défaut avant que tout soit "chaud".
+  timeout: 60_000,
   use: {
     baseURL: "http://localhost:3000",
     trace: "on-first-retry",

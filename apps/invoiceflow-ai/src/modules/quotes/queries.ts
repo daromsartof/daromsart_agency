@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, ilike, or, sql } from "drizzle-orm";
 import type { QuoteStatus } from "@daromsart/core";
 import type { AppDb } from "../../db/types";
-import { clients, quoteLines, quotes } from "../../db/schema";
+import { clients, quoteLines, quotes, signatures } from "../../db/schema";
 
 /**
  * Requêtes pures (sans `server-only`/Next), injectables avec n'importe quelle
@@ -140,8 +140,12 @@ export interface QuoteDetail {
   number: string | null;
   shareToken: string | null;
   sentAt: Date | null;
+  viewedAt: Date | null;
+  signedAt: Date | null;
   refusedAt: Date | null;
   refusalReason: string | null;
+  pdfSignedKey: string | null;
+  pdfHash: string | null;
   issueDate: Date | null;
   validUntil: Date | null;
   notes: string | null;
@@ -171,8 +175,12 @@ export async function getQuoteById(
       number: quotes.number,
       shareToken: quotes.shareToken,
       sentAt: quotes.sentAt,
+      viewedAt: quotes.viewedAt,
+      signedAt: quotes.signedAt,
       refusedAt: quotes.refusedAt,
       refusalReason: quotes.refusalReason,
+      pdfSignedKey: quotes.pdfSignedKey,
+      pdfHash: quotes.pdfHash,
       issueDate: quotes.issueDate,
       validUntil: quotes.validUntil,
       notes: quotes.notes,
@@ -207,8 +215,12 @@ export async function getQuoteById(
     number: quote.number,
     shareToken: quote.shareToken,
     sentAt: quote.sentAt,
+    viewedAt: quote.viewedAt,
+    signedAt: quote.signedAt,
     refusedAt: quote.refusedAt,
     refusalReason: quote.refusalReason,
+    pdfSignedKey: quote.pdfSignedKey,
+    pdfHash: quote.pdfHash,
     issueDate: quote.issueDate,
     validUntil: quote.validUntil,
     notes: quote.notes,
@@ -265,4 +277,31 @@ export async function listQuotesForClient(
     .orderBy(desc(quotes.updatedAt));
 
   return items.map(toQuoteRow);
+}
+
+export interface QuoteSignatureRow {
+  name: string;
+  email: string | null;
+  imageKey: string;
+  signedAt: Date;
+}
+
+/** Fiche signature (card détail interne, story 11) — org-scopée. */
+export async function getQuoteSignature(
+  db: AppDb,
+  organizationId: string,
+  quoteId: string,
+): Promise<QuoteSignatureRow | null> {
+  const [row] = await db
+    .select({
+      name: signatures.signerName,
+      email: signatures.signerEmail,
+      imageKey: signatures.imageKey,
+      signedAt: signatures.signedAt,
+    })
+    .from(signatures)
+    .innerJoin(quotes, eq(quotes.id, signatures.quoteId))
+    .where(and(eq(signatures.quoteId, quoteId), eq(quotes.organizationId, organizationId)))
+    .limit(1);
+  return row ?? null;
 }
