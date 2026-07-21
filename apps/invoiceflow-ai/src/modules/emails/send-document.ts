@@ -1,14 +1,17 @@
 import { z } from "zod";
 import { eq } from "drizzle-orm";
-import { formatEUR, renderEmailVariables, type EmailVariables } from "@daromsart/core";
+import { canTransition, formatEUR, renderEmailVariables, type EmailVariables } from "@daromsart/core";
 import { renderDocumentPdf } from "@daromsart/pdf";
 import type { Storage } from "@daromsart/storage";
 import type { Mailer } from "@daromsart/email";
 import type { AppDb } from "../../db/types";
-import { emailLogs } from "../../db/schema";
+import { emailLogs, invoices } from "../../db/schema";
 import { getQuoteById } from "../quotes/queries";
 import { issueQuote } from "../quotes/mutations";
+import { getInvoiceById } from "../invoices/queries";
+import { issueInvoice } from "../invoices/mutations";
 import { buildQuotePdfInput } from "../documents/pdf";
+import { buildInvoicePdfInput } from "../invoices/pdf";
 import { addDocumentEvent } from "../documents/events";
 
 export type SendQuoteEmailResult =
@@ -148,6 +151,145 @@ export async function sendQuoteEmail(
     organizationId,
     documentType: "quote",
     documentId: quoteId,
+    eventType: "sent",
+    payload: { to: toParsed.data },
+  });
+
+  return { ok: true, emailLogId: log.id };
+}
+
+export type SendInvoiceEmailResult =
+  | { ok: true; emailLogId: string }
+  | { ok: false; errors: Record<string, string> };
+
+export interface SendInvoiceEmailInput {
+  to: string[];
+  cc?: string[];
+  subject: string;
+  bodyText: string;
+}
+
+/**
+ * Orchestration d'envoi d'une facture par email (story 14, miroir de
+ * `sendQuoteEmail`). Différence : le cycle facture sépare `issued` (numéro
+ * attribué, story 12) de `sent` (réellement envoyée) — cette fonction émet
+ * d'abord si brouillon, PUIS fait passer `issued→sent` explicitement (un
+ * renvoi sur une facture déjà `sent`/au-delà ne rétrograde jamais le statut).
+ */
+export async function sendInvoiceEmail(
+  db: AppDb,
+  storage: Storage,
+  mailer: Mailer,
+  organizationId: string,
+  invoiceId: string,
+  input: SendInvoiceEmailInput,
+): Promise<SendInvoiceEmailResult> {
+  const toParsed = emailListSchema.safeParse(input.to);
+  if (!toParsed.success) {
+    return { ok: false, errors: { to: "Au moins une adresse email valide est requise." } };
+  }
+  const ccParsed = ccListSchema.safeParse(input.cc ?? []);
+  if (!ccParsed.success) {
+    return { ok: false, errors: { cc: "Adresse email invalide en copie." } };
+  }
+
+  let invoice = await getInvoiceById(db, organizationId, invoiceId);
+  if (!invoice) {
+    return { ok: false, errors: { _root: "Facture introuvable." } };
+  }
+
+  if (invoice.status === "draft") {
+    const issued = await issueInvoice(db, organizationId, invoiceId);
+    if (!issued.ok) {
+      return { ok: false, errors: issued.errors };
+    }
+    invoice = await getInvoiceById(db, organizationId, invoiceId);
+    if (!invoice) {
+      return { ok: false, errors: { _root: "Facture introuvable." } };
+    }
+  }
+
+  if (canTransition("invoice", invoice.status, "sent")) {
+    const now = new Date();
+    await db
+      .update(invoices)
+      .set({ status: "sent", sentAt: now, updatedAt: now })
+      .where(eq(invoices.id, invoiceId));
+    invoice = await getInvoiceById(db, organizationId, invoiceId);
+    if (!invoice) {
+      return { ok: false, errors: { _root: "Facture introuvable." } };
+    }
+  }
+
+  const pdfInput = await buildInvoicePdfInput(db, storage, organizationId, invoiceId);
+  if (!pdfInput) {
+    return { ok: false, errors: { _root: "Impossible de générer le PDF de la facture." } };
+  }
+
+  const vars: EmailVariables = {
+    client: invoice.clientName,
+    numero: invoice.number ?? undefined,
+    total: formatEUR(invoice.totalCents),
+    lien: pdfInput.publicUrl ?? undefined,
+    echeance: formatDateFr(invoice.dueDate) || undefined,
+  };
+  const subject = renderEmailVariables(input.subject, vars);
+  const bodyText = renderEmailVariables(input.bodyText, vars);
+
+  const [log] = await db
+    .insert(emailLogs)
+    .values({
+      organizationId,
+      documentType: "invoice",
+      documentId: invoiceId,
+      kind: "document",
+      to: toParsed.data,
+      cc: ccParsed.data.length ? ccParsed.data : null,
+      subject,
+      status: "queued",
+    })
+    .returning({ id: emailLogs.id });
+
+  const pdfBuffer = await renderDocumentPdf(pdfInput);
+  const sendResult = await mailer.sendDocumentEmail({
+    to: toParsed.data,
+    cc: ccParsed.data.length ? ccParsed.data : undefined,
+    subject,
+    document: {
+      kind: "invoice",
+      number: invoice.number,
+      clientName: invoice.clientName,
+      organizationName: pdfInput.organization.tradeName ?? pdfInput.organization.legalName,
+      totalCents: invoice.totalCents,
+      publicUrl: pdfInput.publicUrl ?? "",
+      bodyText,
+      accentColor: pdfInput.template.accentColor,
+    },
+    pdfBuffer,
+    pdfFilename: `facture-${invoice.number ?? "brouillon"}.pdf`,
+  });
+
+  const now = new Date();
+  if (!sendResult.ok) {
+    await db
+      .update(emailLogs)
+      .set({ status: "failed", errorMessage: sendResult.error, updatedAt: now })
+      .where(eq(emailLogs.id, log.id));
+    return {
+      ok: false,
+      errors: { _root: "Facture émise mais l'envoi a échoué — réessayez." },
+    };
+  }
+
+  await db
+    .update(emailLogs)
+    .set({ status: "sent", resendId: sendResult.id, sentAt: now, updatedAt: now })
+    .where(eq(emailLogs.id, log.id));
+
+  await addDocumentEvent(db, {
+    organizationId,
+    documentType: "invoice",
+    documentId: invoiceId,
     eventType: "sent",
     payload: { to: toParsed.data },
   });

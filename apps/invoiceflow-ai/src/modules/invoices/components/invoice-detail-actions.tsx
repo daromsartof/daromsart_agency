@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Copy, Download, MoreHorizontal, Send, Trash2 } from "lucide-react";
+import { Copy, Download, Mail, MoreHorizontal, Send, Trash2 } from "lucide-react";
 import {
   Button,
   ConfirmDialog,
@@ -18,18 +18,30 @@ import {
   duplicateInvoiceAction,
   issueInvoiceAction,
 } from "@/modules/invoices/actions";
+import { sendInvoiceEmailAction } from "@/modules/emails/actions";
+import { SendDialog } from "@/modules/documents/components/send-dialog";
 import type { InvoiceDetail } from "@/modules/invoices/queries";
 
 /**
- * Miroir de `quote-detail-actions.tsx` (story 07/08/11), simplifié : pas de
- * signature ni de refus côté facture (H15). L'envoi par email arrivera en
- * story 14 (page publique facture).
+ * Miroir de `quote-detail-actions.tsx` (story 07/08/10/11), simplifié : pas
+ * de signature ni de refus côté facture (H15). Story 14 : ajoute l'envoi par
+ * email (même `SendDialog` générique que les devis).
  */
 export interface InvoiceDetailActionsProps {
   invoice: InvoiceDetail;
+  publicUrl: string | null;
+  defaultRecipient: string | null;
+  defaultSubject: string;
+  defaultBody: string;
 }
 
-export function InvoiceDetailActions({ invoice }: InvoiceDetailActionsProps) {
+export function InvoiceDetailActions({
+  invoice,
+  publicUrl,
+  defaultRecipient,
+  defaultSubject,
+  defaultBody,
+}: InvoiceDetailActionsProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -71,21 +83,44 @@ export function InvoiceDetailActions({ invoice }: InvoiceDetailActionsProps) {
     });
   }
 
+  async function handleCopyLink() {
+    if (!publicUrl) return;
+    await navigator.clipboard.writeText(publicUrl);
+    toast.success("Lien public copié.");
+  }
+
   const isDraft = invoice.status === "draft";
+  const alreadySent = invoice.status !== "draft" && invoice.status !== "issued";
 
   return (
     <div className="flex items-center gap-2">
-      {isDraft ? (
-        <Button size="sm" disabled={pending} onClick={handleIssue}>
-          <Send className="mr-2 h-4 w-4" />
-          Émettre
-        </Button>
-      ) : (
+      <SendDialog
+        trigger={
+          <Button size="sm" disabled={pending}>
+            <Mail className="mr-2 h-4 w-4" />
+            {alreadySent ? "Renvoyer" : "Envoyer"}
+          </Button>
+        }
+        defaultTo={defaultRecipient ? [defaultRecipient] : []}
+        defaultSubject={defaultSubject}
+        defaultBody={defaultBody}
+        willIssueFirst={isDraft}
+        attachmentLabel="Le PDF de la facture sera joint automatiquement."
+        onSend={(input) => sendInvoiceEmailAction(invoice.id, input)}
+        onSuccess={() => router.refresh()}
+      />
+
+      {!isDraft ? (
         <Button asChild size="sm" variant="outline">
           <a href={`/api/documents/factures/${invoice.id}/pdf`} target="_blank" rel="noreferrer">
             <Download className="mr-2 h-4 w-4" />
             Télécharger le PDF
           </a>
+        </Button>
+      ) : (
+        <Button size="sm" variant="outline" disabled={pending} onClick={handleIssue}>
+          <Send className="mr-2 h-4 w-4" />
+          Émettre sans envoyer
         </Button>
       )}
 
@@ -106,6 +141,12 @@ export function InvoiceDetailActions({ invoice }: InvoiceDetailActionsProps) {
             <Copy className="mr-2 h-4 w-4" />
             Dupliquer
           </DropdownMenuItem>
+          {publicUrl ? (
+            <DropdownMenuItem onSelect={handleCopyLink}>
+              <Copy className="mr-2 h-4 w-4" />
+              Copier le lien public
+            </DropdownMenuItem>
+          ) : null}
           {isDraft ? (
             <DropdownMenuItem onSelect={() => setConfirmDelete(true)}>
               <Trash2 className="mr-2 h-4 w-4" />

@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
-import type { QuoteStatus } from "@daromsart/core";
+import type { InvoiceStatus, QuoteStatus } from "@daromsart/core";
 import type { AppDb } from "../../db/types";
-import { clients, organizations, quotes, signatures } from "../../db/schema";
+import { clients, invoices, organizations, quotes, signatures } from "../../db/schema";
 
 export interface PublicQuoteSignature {
   name: string;
@@ -71,5 +71,70 @@ export async function getQuoteByToken(
     ...row,
     status: row.status as QuoteStatus,
     signature: signatureRow ?? null,
+  };
+}
+
+export interface PublicInvoiceData {
+  id: string;
+  organizationId: string;
+  clientId: string;
+  clientName: string;
+  clientEmail: string | null;
+  status: InvoiceStatus;
+  number: string | null;
+  dueDate: Date | null;
+  totalCents: number;
+  amountPaidCents: number;
+  /** Émetteur+IBAN/BIC issus du **snapshot** figé à l'émission (H7) — jamais
+   * des données live de l'organisation, un token n'existant que pour une
+   * facture déjà émise. */
+  organizationName: string;
+  iban: string | null;
+  bic: string | null;
+}
+
+/**
+ * Accès public par token (share_token, story 14, symétrique de
+ * `getQuoteByToken`) : `null` si le token est inconnu, sans distinguer la
+ * raison (parade E-27).
+ */
+export async function getInvoiceByToken(
+  db: AppDb,
+  token: string,
+): Promise<PublicInvoiceData | null> {
+  const [row] = await db
+    .select({
+      id: invoices.id,
+      organizationId: invoices.organizationId,
+      clientId: invoices.clientId,
+      clientName: clients.displayName,
+      clientEmail: clients.email,
+      status: invoices.status,
+      number: invoices.number,
+      dueDate: invoices.dueDate,
+      totalCents: invoices.totalCents,
+      amountPaidCents: invoices.amountPaidCents,
+      organizationSnapshot: invoices.organizationSnapshot,
+    })
+    .from(invoices)
+    .innerJoin(clients, eq(clients.id, invoices.clientId))
+    .where(eq(invoices.shareToken, token))
+    .limit(1);
+  if (!row) return null;
+
+  return {
+    id: row.id,
+    organizationId: row.organizationId,
+    clientId: row.clientId,
+    clientName: row.clientName,
+    clientEmail: row.clientEmail,
+    status: row.status as InvoiceStatus,
+    number: row.number,
+    dueDate: row.dueDate,
+    totalCents: row.totalCents,
+    amountPaidCents: row.amountPaidCents,
+    organizationName: row.organizationSnapshot?.legalName ?? "",
+    iban: row.organizationSnapshot?.iban ?? null,
+    bic: row.organizationSnapshot?.bic ?? null,
   };
 }
