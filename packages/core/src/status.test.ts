@@ -24,7 +24,7 @@ const INVOICE_ALLOWED: Record<InvoiceStatus, InvoiceStatus[]> = {
   viewed: ["partially_paid", "paid", "overdue", "cancelled"],
   partially_paid: ["paid", "overdue", "cancelled"],
   overdue: ["partially_paid", "paid", "cancelled"],
-  paid: ["partially_paid"],
+  paid: ["partially_paid", "cancelled"],
   cancelled: [],
 };
 
@@ -70,9 +70,11 @@ describe("canTransition — cas limites", () => {
     }
   });
 
-  it("une facture payée n'autorise que le retour à partially_paid (story 15, suppression de paiement)", () => {
+  it("une facture payée n'autorise que le retour à partially_paid (story 15) ou cancelled (story 18, avoir total)", () => {
     for (const to of INVOICE_STATUSES) {
-      expect(canTransition("invoice", "paid", to)).toBe(to === "partially_paid");
+      expect(canTransition("invoice", "paid", to)).toBe(
+        to === "partially_paid" || to === "cancelled",
+      );
     }
   });
 });

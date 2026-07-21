@@ -49,6 +49,10 @@ const QUOTE_TRANSITIONS: Record<QuoteStatus, QuoteStatus[]> = {
  * directe). Toute autre régression (retour à `issued`/`sent`/`viewed`) n'est
  * PAS modélisée : si `deletePayment` ramène `amount_paid_cents` à zéro, le
  * statut reste `partially_paid` plutôt que de reconstruire un état antérieur.
+ *
+ * `paid → cancelled` (story 18) : un avoir peut créditer intégralement une
+ * facture déjà payée (remboursement) — l'annulation par avoir total ne
+ * dépend jamais du statut de paiement courant du parent.
  */
 const INVOICE_TRANSITIONS: Record<InvoiceStatus, InvoiceStatus[]> = {
   draft: ["issued"],
@@ -57,7 +61,7 @@ const INVOICE_TRANSITIONS: Record<InvoiceStatus, InvoiceStatus[]> = {
   viewed: ["partially_paid", "paid", "overdue", "cancelled"],
   partially_paid: ["paid", "overdue", "cancelled"],
   overdue: ["partially_paid", "paid", "cancelled"],
-  paid: ["partially_paid"],
+  paid: ["partially_paid", "cancelled"],
   cancelled: [],
 };
 

@@ -171,12 +171,17 @@ export async function updateDraft(
   const data = parsed.data;
 
   const [existing] = await db
-    .select({ id: invoices.id, status: invoices.status })
+    .select({ id: invoices.id, status: invoices.status, kind: invoices.kind })
     .from(invoices)
     .where(and(eq(invoices.id, invoiceId), eq(invoices.organizationId, organizationId)))
     .limit(1);
   if (!existing) {
     return { ok: false, errors: { _root: "Facture introuvable." } };
+  }
+  if (existing.kind === "credit_note") {
+    // Un avoir se modifie via `updateCreditNoteDraft` (story 18, quantités
+    // négatives, garde du cumul créditable) — jamais via ce chemin.
+    return { ok: false, errors: { _root: "Utilisez l'édition d'avoir pour ce document." } };
   }
   if (existing.status !== "draft") {
     return {
@@ -284,6 +289,11 @@ export async function duplicate(
   if (!source) {
     return { ok: false, errors: { _root: "Facture introuvable." } };
   }
+  if (source.kind === "credit_note") {
+    // Pas de refacturation automatique après annulation (plans/story-18.md,
+    // « Quand s'arrêter ») : dupliquer un avoir n'est pas supporté.
+    return { ok: false, errors: { _root: "Un avoir ne peut pas être dupliqué." } };
+  }
 
   const sourceLines = await db
     .select()
@@ -364,12 +374,18 @@ export async function issueInvoice(
         status: invoices.status,
         clientId: invoices.clientId,
         quoteId: invoices.quoteId,
+        kind: invoices.kind,
       })
       .from(invoices)
       .where(and(eq(invoices.id, invoiceId), eq(invoices.organizationId, organizationId)))
       .limit(1);
     if (!existing) {
       return { ok: false, errors: { _root: "Facture introuvable." } };
+    }
+    if (existing.kind === "credit_note") {
+      // Un avoir s'émet via `issueCreditNote` (story 18, séquence AV, verrou
+      // + annulation éventuelle du parent) — jamais via ce chemin.
+      return { ok: false, errors: { _root: "Utilisez l'émission d'avoir pour ce document." } };
     }
     if (!canTransition("invoice", existing.status as InvoiceStatus, "issued")) {
       return { ok: false, errors: { _root: "Seule une facture brouillon peut être émise." } };

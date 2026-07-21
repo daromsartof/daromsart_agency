@@ -115,6 +115,11 @@ export function computeDocumentTotals(
     subtotal,
     discount: globalDiscountCents,
     vatByRate,
-    total: Math.max(0, total),
+    // Jamais de clamp à 0 ici : un avoir (story 18) a des quantités
+    // négatives et donc un total négatif, légitime. Un devis/facture normal
+    // ne peut jamais atteindre ce cas (les remises sont déjà bornées au
+    // sous-total par `discountAmount`, qui ne s'applique d'ailleurs jamais
+    // à une ligne ou un sous-total négatif — garde `base <= 0` ci-dessus).
+    total,
   };
 }

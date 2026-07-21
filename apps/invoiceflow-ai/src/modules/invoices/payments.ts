@@ -69,6 +69,11 @@ export async function recordPayment(
     if (!invoice) {
       return { ok: false, errors: { _root: "Facture introuvable." } };
     }
+    if (invoice.kind === "credit_note") {
+      // Décision V1 (story 18, plans/ledger.md) : les remboursements liés à
+      // un avoir se suivent hors outil, jamais via `recordPayment`.
+      return { ok: false, errors: { _root: "Impossible d'enregistrer un paiement sur un avoir." } };
+    }
     if (invoice.status === "draft" || invoice.status === "cancelled") {
       return {
         ok: false,

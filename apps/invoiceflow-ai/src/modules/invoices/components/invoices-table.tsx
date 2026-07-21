@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Copy, CreditCard, MoreHorizontal, Receipt, Trash2 } from "lucide-react";
 import {
+  Badge,
   Button,
   ConfirmDialog,
   DataTable,
@@ -101,7 +102,12 @@ export function InvoicesTable({
     {
       accessorKey: "number",
       header: "Numéro",
-      cell: ({ row }) => row.original.number ?? "—",
+      cell: ({ row }) => (
+        <span className="flex items-center gap-2">
+          {row.original.number ?? "—"}
+          {row.original.kind === "credit_note" ? <Badge variant="outline">Avoir</Badge> : null}
+        </span>
+      ),
     },
     {
       id: "dueDate",
@@ -154,13 +160,15 @@ export function InvoicesTable({
                 <Link href={`/factures/${row.original.id}`}>Consulter</Link>
               </DropdownMenuItem>
             )}
-            <DropdownMenuItem
-              disabled={pending}
-              onSelect={() => handleDuplicate(row.original)}
-            >
-              <Copy className="mr-2 h-4 w-4" />
-              Dupliquer
-            </DropdownMenuItem>
+            {row.original.kind !== "credit_note" ? (
+              <DropdownMenuItem
+                disabled={pending}
+                onSelect={() => handleDuplicate(row.original)}
+              >
+                <Copy className="mr-2 h-4 w-4" />
+                Dupliquer
+              </DropdownMenuItem>
+            ) : null}
             {row.original.status !== "draft" &&
             row.original.status !== "cancelled" &&
             row.original.totalCents - row.original.amountPaidCents > 0 ? (
