@@ -14,6 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@daromsart/ui";
+import Link from "next/link";
 import { renderEmailVariables } from "@daromsart/core";
 import { db } from "@/db";
 import { env } from "@/lib/env";
@@ -23,6 +24,7 @@ import { listDocumentEvents } from "@/modules/documents/events";
 import { EventTimeline } from "@/modules/documents/components/event-timeline";
 import { QuoteDetailActions } from "@/modules/quotes/components/quote-detail-actions";
 import { getQuoteById, getQuoteSignature } from "@/modules/quotes/queries";
+import { getInvoiceById } from "@/modules/invoices/queries";
 import { getClientById } from "@/modules/clients/queries";
 import { getOrg } from "@/modules/organization/queries";
 
@@ -80,6 +82,10 @@ export default async function DevisDetailPage({
   const signature =
     quote.status === "signed" ? await getQuoteSignature(db, organizationId, quote.id) : null;
   const signatureImageUrl = signature ? await storage.getSignedUrl(signature.imageKey) : null;
+
+  const linkedInvoice = quote.invoiceId
+    ? await getInvoiceById(db, organizationId, quote.invoiceId)
+    : null;
 
   return (
     <>
@@ -223,14 +229,42 @@ export default async function DevisDetailPage({
           </Card>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Activité</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <EventTimeline events={events} />
-          </CardContent>
-        </Card>
+        <div className="space-y-4">
+          {linkedInvoice ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Facturation</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <div className="flex items-center justify-between">
+                  <Link
+                    href={
+                      linkedInvoice.status === "draft"
+                        ? `/factures/${linkedInvoice.id}/modifier`
+                        : `/factures/${linkedInvoice.id}`
+                    }
+                    className="font-medium hover:underline"
+                  >
+                    {linkedInvoice.number ?? "Brouillon"}
+                  </Link>
+                  <StatusBadge status={linkedInvoice.status} />
+                </div>
+                <p className="text-muted-foreground">
+                  {formatCentsEUR(linkedInvoice.totalCents)}
+                </p>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Activité</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <EventTimeline events={events} />
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </>
   );

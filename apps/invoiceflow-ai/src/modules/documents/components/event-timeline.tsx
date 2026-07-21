@@ -12,6 +12,8 @@ const EVENT_LABELS: Record<string, string> = {
   refused: "Refusé",
   expired: "Expiré",
   converted: "Converti en facture",
+  invoiced: "Facturé (facture émise)",
+  unlinked: "Lien de facturation retiré",
   payment_recorded: "Paiement enregistré",
   payment_deleted: "Paiement supprimé",
   reminded: "Relance envoyée",

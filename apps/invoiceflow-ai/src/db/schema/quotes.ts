@@ -1,4 +1,5 @@
 import {
+  type AnyPgColumn,
   integer,
   jsonb,
   numeric,
@@ -12,6 +13,7 @@ import type { QuoteStatus } from "@daromsart/core";
 import { clients } from "./clients";
 import { organizations } from "./organization";
 import { documentTemplates } from "./templates";
+import { invoices } from "./invoices";
 
 /**
  * Devis. Les totaux (`subtotalCents`/`discountCents`/`vatByRate`/`totalCents`)
@@ -40,6 +42,12 @@ export const quotes = pgTable(
     status: text("status").$type<QuoteStatus>().notNull().default("draft"),
     number: text("number"),
     shareToken: text("share_token"),
+    /** Facture issue d'une conversion (story 17). Nul tant qu'aucune
+     * conversion n'a eu lieu ; remis à null si le brouillon converti est
+     * supprimé (permet une nouvelle conversion). */
+    invoiceId: uuid("invoice_id").references((): AnyPgColumn => invoices.id, {
+      onDelete: "set null",
+    }),
 
     issueDate: timestamp("issue_date"),
     validUntil: timestamp("valid_until"),

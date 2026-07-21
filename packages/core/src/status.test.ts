@@ -9,8 +9,8 @@ import {
 
 const QUOTE_ALLOWED: Record<QuoteStatus, QuoteStatus[]> = {
   draft: ["sent"],
-  sent: ["viewed", "signed", "refused", "expired"],
-  viewed: ["signed", "refused", "expired"],
+  sent: ["viewed", "signed", "refused", "expired", "invoiced"],
+  viewed: ["signed", "refused", "expired", "invoiced"],
   signed: ["invoiced"],
   refused: [],
   expired: [],

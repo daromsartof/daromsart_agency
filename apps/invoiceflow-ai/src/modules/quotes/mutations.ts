@@ -7,7 +7,15 @@ import {
   type QuoteStatus,
 } from "@daromsart/core";
 import type { AppDb } from "../../db/types";
-import { clients, documentTemplates, organizations, quoteLines, quotes } from "../../db/schema";
+import {
+  clients,
+  documentTemplates,
+  invoiceLines,
+  invoices,
+  organizations,
+  quoteLines,
+  quotes,
+} from "../../db/schema";
 import { addDocumentEvent } from "../documents/events";
 import { issueNumber } from "../documents/numbering";
 import { recalculateDocumentTotals } from "../documents/recalculate";
@@ -453,4 +461,128 @@ export async function markRefused(
   });
 
   return { ok: true };
+}
+
+export type ConvertToInvoiceResult =
+  | { ok: true; invoiceId: string }
+  | { ok: false; errors: Record<string, string> };
+
+/**
+ * Conversion devis → facture (story 17). Statut du devis INCHANGÉ ici — le
+ * devis ne passe à `invoiced` que plus tard, quand la facture issue de la
+ * conversion est réellement émise (`issueInvoice`, story 12). Éligibilité :
+ * `signed` toujours autorisé ; `sent`/`viewed` uniquement avec
+ * `options.force` (confirmation utilisateur côté UI — le devis n'a pas
+ * formellement été signé). Verrou `FOR UPDATE` sur la ligne devis : une
+ * double conversion concurrente ne peut pas passer deux fois (la seconde
+ * relit `invoiceId` déjà posé par la première et refuse).
+ */
+export async function convertToInvoice(
+  db: AppDb,
+  organizationId: string,
+  quoteId: string,
+  options: { force?: boolean } = {},
+): Promise<ConvertToInvoiceResult> {
+  return db.transaction(async (tx): Promise<ConvertToInvoiceResult> => {
+    const [quote] = await tx
+      .select()
+      .from(quotes)
+      .where(and(eq(quotes.id, quoteId), eq(quotes.organizationId, organizationId)))
+      .for("update");
+    if (!quote) {
+      return { ok: false, errors: { _root: "Devis introuvable." } };
+    }
+    if (quote.invoiceId) {
+      return { ok: false, errors: { _root: "Ce devis a déjà été converti en facture." } };
+    }
+    const eligible =
+      quote.status === "signed" ||
+      ((quote.status === "sent" || quote.status === "viewed") && options.force);
+    if (!eligible) {
+      return {
+        ok: false,
+        errors: { _root: "Ce devis doit être signé (ou la conversion confirmée) pour être converti." },
+      };
+    }
+
+    const sourceLines = await tx
+      .select()
+      .from(quoteLines)
+      .where(eq(quoteLines.quoteId, quoteId));
+
+    const [client] = await tx
+      .select({ paymentTermsDays: clients.paymentTermsDays })
+      .from(clients)
+      .where(eq(clients.id, quote.clientId))
+      .limit(1);
+    const [org] = await tx
+      .select({ paymentTermsDays: organizations.paymentTermsDays })
+      .from(organizations)
+      .where(eq(organizations.id, organizationId))
+      .limit(1);
+    const paymentTermsDays = client?.paymentTermsDays ?? org?.paymentTermsDays ?? 30;
+
+    const issueDate = new Date();
+    const dueDate = new Date(issueDate);
+    dueDate.setDate(dueDate.getDate() + paymentTermsDays);
+
+    const [createdInvoice] = await tx
+      .insert(invoices)
+      .values({
+        organizationId,
+        clientId: quote.clientId,
+        templateId: quote.templateId,
+        quoteId: quote.id,
+        status: "draft",
+        issueDate,
+        dueDate,
+        notes: quote.notes,
+        globalDiscountType: quote.globalDiscountType,
+        globalDiscountValue: quote.globalDiscountValue,
+        subtotalCents: quote.subtotalCents,
+        discountCents: quote.discountCents,
+        vatByRate: quote.vatByRate,
+        totalCents: quote.totalCents,
+      })
+      .returning({ id: invoices.id });
+
+    if (sourceLines.length) {
+      await tx.insert(invoiceLines).values(
+        sourceLines
+          .sort((a, b) => a.position - b.position)
+          .map((line, index) => ({
+            invoiceId: createdInvoice.id,
+            description: line.description,
+            quantity: line.quantity,
+            unitPriceCents: line.unitPriceCents,
+            vatRate: line.vatRate,
+            discountType: line.discountType,
+            discountValue: line.discountValue,
+            position: index,
+          })),
+      );
+    }
+
+    await tx
+      .update(quotes)
+      .set({ invoiceId: createdInvoice.id, updatedAt: issueDate })
+      .where(eq(quotes.id, quoteId));
+
+    await addDocumentEvent(tx, {
+      organizationId,
+      documentType: "quote",
+      documentId: quoteId,
+      eventType: "converted",
+      payload: { invoiceId: createdInvoice.id },
+    });
+    await addDocumentEvent(tx, {
+      organizationId,
+      documentType: "invoice",
+      documentId: createdInvoice.id,
+      eventType: "converted",
+      payload: { quoteId },
+    });
+
+    return { ok: true, invoiceId: createdInvoice.id };
+  });
 }

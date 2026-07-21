@@ -64,6 +64,13 @@
       "when": 1784662635567,
       "tag": "0008_unknown_karnak",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1784671265918,
+      "tag": "0009_steep_tomas",
+      "breakpoints": true
     }
   ]
 }

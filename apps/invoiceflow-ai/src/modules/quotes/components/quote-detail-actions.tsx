@@ -3,7 +3,16 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Copy, Download, Mail, MoreHorizontal, Send, Trash2, XCircle } from "lucide-react";
+import {
+  ArrowRightLeft,
+  Copy,
+  Download,
+  Mail,
+  MoreHorizontal,
+  Send,
+  Trash2,
+  XCircle,
+} from "lucide-react";
 import {
   Button,
   ConfirmDialog,
@@ -15,6 +24,7 @@ import {
 } from "@daromsart/ui";
 import { canTransition } from "@daromsart/core";
 import {
+  convertToInvoiceAction,
   deleteQuoteAction,
   duplicateQuoteAction,
   issueQuoteAction,
@@ -43,6 +53,7 @@ export function QuoteDetailActions({
   const [pending, startTransition] = useTransition();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmRefuse, setConfirmRefuse] = useState(false);
+  const [confirmConvert, setConfirmConvert] = useState(false);
 
   function handleIssue() {
     startTransition(async () => {
@@ -100,8 +111,23 @@ export function QuoteDetailActions({
     toast.success("Lien public copié.");
   }
 
+  function handleConvert(force: boolean) {
+    setConfirmConvert(false);
+    startTransition(async () => {
+      const result = await convertToInvoiceAction(quote.id, { force });
+      if (!result.ok) {
+        toast.error(result.errors._root ?? "Échec de la conversion.");
+        return;
+      }
+      toast.success("Devis converti en facture.");
+      router.push(`/factures/${result.invoiceId}/modifier`);
+    });
+  }
+
   const canRefuse = canTransition("quote", quote.status, "refused");
   const alreadySent = quote.status !== "draft";
+  const canConvert =
+    !quote.invoiceId && (quote.status === "signed" || quote.status === "sent" || quote.status === "viewed");
 
   return (
     <div className="flex items-center gap-2">
@@ -138,6 +164,20 @@ export function QuoteDetailActions({
       {!alreadySent ? (
         <Button asChild size="sm" variant="outline">
           <Link href={`/devis/${quote.id}/modifier`}>Modifier</Link>
+        </Button>
+      ) : null}
+
+      {canConvert ? (
+        <Button
+          size="sm"
+          variant={quote.status === "signed" ? "default" : "outline"}
+          disabled={pending}
+          onClick={() =>
+            quote.status === "signed" ? handleConvert(false) : setConfirmConvert(true)
+          }
+        >
+          <ArrowRightLeft className="mr-2 h-4 w-4" />
+          Convertir en facture
         </Button>
       ) : null}
 
@@ -190,6 +230,14 @@ export function QuoteDetailActions({
         confirmLabel="Marquer refusé"
         destructive
         onConfirm={handleRefuse}
+      />
+      <ConfirmDialog
+        open={confirmConvert}
+        onOpenChange={setConfirmConvert}
+        title="Convertir ce devis en facture ?"
+        description="Ce devis n'est pas encore signé par le client. Convertir maintenant en facture brouillon quand même ?"
+        confirmLabel="Convertir"
+        onConfirm={() => handleConvert(true)}
       />
     </div>
   );
