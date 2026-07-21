@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { DocumentDraftInput } from "@daromsart/core";
+import type { CreditNoteDraftInput, DocumentDraftInput } from "@daromsart/core";
 import { db } from "../../db";
 import { storage } from "../../lib/storage";
 import { mailer } from "../../lib/mailer";
@@ -25,6 +25,13 @@ import {
   type RecordPaymentResult,
 } from "./payments";
 import { remindInvoice, type RemindInvoiceInput, type RemindInvoiceResult } from "./reminders";
+import {
+  createCreditNoteDraft,
+  issueCreditNote,
+  updateCreditNoteDraft,
+  type CreateCreditNoteResult,
+  type IssueCreditNoteResult,
+} from "./credit-notes";
 
 async function requireOrganizationId(): Promise<string> {
   const session = await requireSession();
@@ -132,6 +139,43 @@ export async function remindInvoiceAction(
   if (result.ok) {
     revalidatePath("/factures");
     revalidatePath(`/factures/${invoiceId}`);
+  }
+  return result;
+}
+
+export async function createCreditNoteAction(
+  parentInvoiceId: string,
+): Promise<CreateCreditNoteResult> {
+  const organizationId = await requireOrganizationId();
+  const result = await createCreditNoteDraft(db, organizationId, parentInvoiceId);
+  if (result.ok) {
+    revalidatePath("/factures");
+    revalidatePath(`/factures/${parentInvoiceId}`);
+  }
+  return result;
+}
+
+export async function updateCreditNoteAction(
+  creditNoteId: string,
+  input: CreditNoteDraftInput,
+): Promise<MutationResult> {
+  const organizationId = await requireOrganizationId();
+  const result = await updateCreditNoteDraft(db, organizationId, creditNoteId, input);
+  if (result.ok) {
+    revalidatePath("/factures");
+    revalidatePath(`/factures/${creditNoteId}`);
+  }
+  return result;
+}
+
+export async function issueCreditNoteAction(
+  creditNoteId: string,
+): Promise<IssueCreditNoteResult> {
+  const organizationId = await requireOrganizationId();
+  const result = await issueCreditNote(db, organizationId, creditNoteId);
+  if (result.ok) {
+    revalidatePath("/factures");
+    revalidatePath(`/factures/${creditNoteId}`);
   }
   return result;
 }

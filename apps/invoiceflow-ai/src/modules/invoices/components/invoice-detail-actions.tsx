@@ -3,7 +3,16 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Copy, Download, Mail, MoreHorizontal, Send, Trash2 } from "lucide-react";
+import {
+  AlertTriangle,
+  Copy,
+  Download,
+  FileMinus,
+  Mail,
+  MoreHorizontal,
+  Send,
+  Trash2,
+} from "lucide-react";
 import {
   Button,
   ConfirmDialog,
@@ -15,6 +24,7 @@ import {
   toast,
 } from "@daromsart/ui";
 import {
+  createCreditNoteAction,
   deleteInvoiceAction,
   duplicateInvoiceAction,
   issueInvoiceAction,
@@ -100,6 +110,18 @@ export function InvoiceDetailActions({
     });
   }
 
+  function handleCreateCreditNote() {
+    startTransition(async () => {
+      const result = await createCreditNoteAction(invoice.id);
+      if (!result.ok) {
+        toast.error(result.errors._root ?? "Échec de la création de l'avoir.");
+        return;
+      }
+      toast.success("Avoir créé en brouillon.");
+      router.push(`/factures/${result.id}/modifier`);
+    });
+  }
+
   async function handleCopyLink() {
     if (!publicUrl) return;
     await navigator.clipboard.writeText(publicUrl);
@@ -108,6 +130,7 @@ export function InvoiceDetailActions({
 
   const isDraft = invoice.status === "draft";
   const alreadySent = invoice.status !== "draft" && invoice.status !== "issued";
+  const canCreateCreditNote = invoice.status !== "draft" && invoice.status !== "cancelled";
 
   return (
     <div className="flex flex-col items-end gap-1">
@@ -186,6 +209,12 @@ export function InvoiceDetailActions({
               <DropdownMenuItem onSelect={handleCopyLink}>
                 <Copy className="mr-2 h-4 w-4" />
                 Copier le lien public
+              </DropdownMenuItem>
+            ) : null}
+            {canCreateCreditNote ? (
+              <DropdownMenuItem onSelect={handleCreateCreditNote}>
+                <FileMinus className="mr-2 h-4 w-4" />
+                Créer un avoir
               </DropdownMenuItem>
             ) : null}
             {isDraft ? (

@@ -163,4 +163,63 @@ describe("computeDocumentTotals", () => {
     expect(result.discount).toBe(0);
     expect(result.total).toBe(0);
   });
+
+  it("15. quantités négatives (avoir, story 18) : total négatif, jamais clampé à 0", () => {
+    const result = computeDocumentTotals([
+      line({ unitPriceCents: 10000, quantity: -1, vatRate: 20 }),
+    ]);
+    expect(result.subtotal).toBe(-10000);
+    expect(result.vatByRate).toEqual({ "20": -2000 });
+    expect(result.total).toBe(-12000);
+  });
+
+  it("16. avoir partiel (quantité négative fractionnaire) — TVA négative arrondie par taux", () => {
+    const result = computeDocumentTotals([
+      line({ unitPriceCents: 15000, quantity: -0.5, vatRate: 10 }),
+    ]);
+    expect(result.subtotal).toBe(-7500);
+    expect(result.vatByRate).toEqual({ "10": -750 });
+    expect(result.total).toBe(-8250);
+  });
+
+  it("17. avoir : une remise ligne ne s'applique jamais à une ligne négative (garde base <= 0)", () => {
+    const result = computeDocumentTotals([
+      line({
+        unitPriceCents: 10000,
+        quantity: -1,
+        vatRate: 20,
+        discount: { type: "percent", value: 10 },
+      }),
+    ]);
+    // La remise (pensée pour une ligne positive) est ignorée sur une ligne
+    // négative plutôt que de produire un résultat incohérent.
+    expect(result.subtotal).toBe(-10000);
+    expect(result.total).toBe(-12000);
+  });
+
+  it("18. avoir : une remise globale ne s'applique jamais à un sous-total négatif", () => {
+    const result = computeDocumentTotals(
+      [line({ unitPriceCents: 10000, quantity: -1, vatRate: 20 })],
+      { type: "amount", value: 1000 },
+    );
+    expect(result.discount).toBe(0);
+    expect(result.total).toBe(-12000);
+  });
+
+  it("19. avoir multi-lignes, taux mixtes : totaux au centime, symétriques de la facture d'origine", () => {
+    const invoiceLines = [
+      line({ unitPriceCents: 20000, quantity: 2, vatRate: 20 }),
+      line({ unitPriceCents: 5000, quantity: 1, vatRate: 10 }),
+    ];
+    const invoiceTotals = computeDocumentTotals(invoiceLines);
+
+    const creditNoteLines = invoiceLines.map((l) => ({ ...l, quantity: -l.quantity }));
+    const creditNoteTotals = computeDocumentTotals(creditNoteLines);
+
+    expect(creditNoteTotals.subtotal).toBe(-invoiceTotals.subtotal);
+    expect(creditNoteTotals.total).toBe(-invoiceTotals.total);
+    for (const rate of Object.keys(invoiceTotals.vatByRate)) {
+      expect(creditNoteTotals.vatByRate[rate]).toBe(-invoiceTotals.vatByRate[rate]);
+    }
+  });
 });

@@ -10,7 +10,8 @@ import { renderDocumentPdf } from "@daromsart/pdf";
 import * as schema from "../../db/schema";
 import { clients, invoices, organizations } from "../../db/schema";
 import { createDraft, issueInvoice } from "./mutations";
-import { buildInvoicePdfInput } from "./pdf";
+import { createCreditNoteDraft, issueCreditNote } from "./credit-notes";
+import { buildInvoicePdfInput, resolveInvoicePdfBuffer } from "./pdf";
 
 const url = process.env.TEST_DATABASE_URL;
 const client = postgres(url ?? "", { max: 1 });
@@ -131,5 +132,41 @@ describe("buildInvoicePdfInput", () => {
       "00000000-0000-0000-0000-000000000000",
     );
     expect(input).toBeNull();
+  });
+
+  it("avoir (story 18) : kind = credit_note, pas d'échéance, référence la facture d'origine", async () => {
+    const created = await createDraft(db, orgId, {
+      clientId,
+      lines: [{ description: "Prestation", quantity: 1, unitPriceCents: 10000, vatRate: 20 }],
+    });
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+    const issued = await issueInvoice(db, orgId, created.id);
+    expect(issued.ok).toBe(true);
+    if (!issued.ok) return;
+
+    const draft = await createCreditNoteDraft(db, orgId, created.id);
+    expect(draft.ok).toBe(true);
+    if (!draft.ok) return;
+    const issuedCreditNote = await issueCreditNote(db, orgId, draft.id);
+    expect(issuedCreditNote.ok).toBe(true);
+    if (!issuedCreditNote.ok) return;
+
+    const input = await buildInvoicePdfInput(db, storage(), orgId, draft.id);
+    expect(input).not.toBeNull();
+    if (!input) return;
+
+    expect(input.meta.kind).toBe("credit_note");
+    expect(input.meta.number).toBe(issuedCreditNote.number);
+    expect(input.meta.number).toMatch(/^AV-/);
+    expect(input.meta.dueOrValidUntil).toBeNull();
+    expect(input.meta.title).toContain(issued.number);
+    expect(input.totals.totalCents).toBeLessThan(0);
+
+    const buffer = await renderDocumentPdf(input);
+    expect(buffer.subarray(0, 5).toString("utf8")).toBe("%PDF-");
+
+    const file = await resolveInvoicePdfBuffer(db, storage(), orgId, draft.id);
+    expect(file?.filename).toMatch(/^avoir-AV-/);
   });
 });

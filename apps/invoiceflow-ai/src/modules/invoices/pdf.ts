@@ -91,6 +91,17 @@ export async function buildInvoicePdfInput(
     publicUrl,
   });
 
+  // Avoir (story 18) : référence la facture d'origine annulée/créditée —
+  // affichée via `meta.title` (ligne libre sous le bloc dates du PDF).
+  let creditNoteReference: string | null = null;
+  if (invoice.kind === "credit_note" && invoice.parentInvoiceId) {
+    const parent = await getInvoiceById(db, organizationId, invoice.parentInvoiceId);
+    if (parent?.number) {
+      const scope = Math.abs(invoice.totalCents) >= Math.abs(parent.totalCents) ? "totalement" : "partiellement";
+      creditNoteReference = `Annule et remplace ${scope} la facture ${parent.number}`;
+    }
+  }
+
   return {
     organization: {
       legalName: orgData.legalName,
@@ -115,11 +126,11 @@ export async function buildInvoicePdfInput(
       email: clientData.email,
     },
     meta: {
-      kind: "invoice",
+      kind: invoice.kind,
       number: invoice.number,
       issueDate: invoice.issueDate,
-      dueOrValidUntil: invoice.dueDate,
-      title: null,
+      dueOrValidUntil: invoice.kind === "credit_note" ? null : invoice.dueDate,
+      title: creditNoteReference,
     },
     lines: invoice.lines.map((line) => ({
       description: line.description,
@@ -162,5 +173,6 @@ export async function resolveInvoicePdfBuffer(
   const input = await buildInvoicePdfInput(db, storage, organizationId, invoiceId);
   if (!input) return null;
   const buffer = await renderDocumentPdf(input);
-  return { buffer, filename: `facture-${invoice.number ?? "brouillon"}.pdf` };
+  const prefix = invoice.kind === "credit_note" ? "avoir" : "facture";
+  return { buffer, filename: `${prefix}-${invoice.number ?? "brouillon"}.pdf` };
 }

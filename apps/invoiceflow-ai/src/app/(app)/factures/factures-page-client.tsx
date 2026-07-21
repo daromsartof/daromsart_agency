@@ -124,9 +124,11 @@ export function FacturesPageClient({
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <Button asChild>
-          <Link href="/factures/nouvelle">Nouvelle facture</Link>
-        </Button>
+        {tab !== "avoirs" ? (
+          <Button asChild>
+            <Link href="/factures/nouvelle">Nouvelle facture</Link>
+          </Button>
+        ) : null}
       </div>
 
       <Tabs value={tab} onValueChange={goToTab}>
