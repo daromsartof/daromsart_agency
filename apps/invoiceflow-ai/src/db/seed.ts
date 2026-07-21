@@ -1,11 +1,21 @@
 import "dotenv/config";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { createAuth } from "@daromsart/auth";
+import { DEFAULT_TEMPLATE_OPTIONS } from "@daromsart/core";
 import { db } from "./index";
 import * as schema from "./schema";
-import { clientContacts, clients, memberships, organizations, quotes, user } from "./schema";
+import {
+  clientContacts,
+  clients,
+  documentTemplates,
+  memberships,
+  organizations,
+  quotes,
+  user,
+} from "./schema";
 import { env } from "../lib/env";
 import { createDraft, issueQuote } from "../modules/quotes/mutations";
+import { createTemplate, setDefaultTemplate } from "../modules/templates/mutations";
 
 interface SeedClient {
   type: "company" | "individual";
@@ -212,7 +222,41 @@ async function main() {
     console.info(`• ${existingClientCount} client(s) déjà présents.`);
   }
 
-  // 5. Devis de démonstration (brouillons variés : mono/multi-taux, remises).
+  // 5. Modèles de documents (défaut "Classique" + variante "Moderne").
+  const [{ count: existingTemplateCount }] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(documentTemplates)
+    .where(eq(documentTemplates.organizationId, org.id));
+  let defaultTemplateId: string | null = null;
+  if (existingTemplateCount === 0) {
+    const classique = await createTemplate(db, org.id, {
+      name: "Classique",
+      type: "both",
+      options: DEFAULT_TEMPLATE_OPTIONS,
+    });
+    if (classique.ok) {
+      await setDefaultTemplate(db, org.id, classique.id);
+      defaultTemplateId = classique.id;
+    }
+    await createTemplate(db, org.id, {
+      name: "Moderne",
+      type: "both",
+      options: { ...DEFAULT_TEMPLATE_OPTIONS, accentColor: "#28C76F", font: "serif" },
+    });
+    console.info("✓ 2 modèles de démonstration créés (Classique = défaut, Moderne).");
+  } else {
+    console.info(`• ${existingTemplateCount} modèle(s) déjà présents.`);
+    const [existingDefault] = await db
+      .select({ id: documentTemplates.id })
+      .from(documentTemplates)
+      .where(
+        and(eq(documentTemplates.organizationId, org.id), eq(documentTemplates.isDefault, true)),
+      )
+      .limit(1);
+    defaultTemplateId = existingDefault?.id ?? null;
+  }
+
+  // 6. Devis de démonstration (brouillons variés : mono/multi-taux, remises).
   const [{ count: existingQuoteCount }] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(quotes)
@@ -234,6 +278,7 @@ async function main() {
 
       const quote1 = await createDraft(db, org.id, {
         clientId: c1.id,
+        templateId: defaultTemplateId,
         issueDate,
         validUntil,
         lines: [

@@ -7,7 +7,7 @@ import {
   type QuoteStatus,
 } from "@daromsart/core";
 import type { AppDb } from "../../db/types";
-import { clients, organizations, quoteLines, quotes } from "../../db/schema";
+import { clients, documentTemplates, organizations, quoteLines, quotes } from "../../db/schema";
 import { addDocumentEvent } from "../documents/events";
 import { issueNumber } from "../documents/numbering";
 import { recalculateDocumentTotals } from "../documents/recalculate";
@@ -52,6 +52,26 @@ async function assertClientInOrg(
   return Boolean(found);
 }
 
+/** `undefined` = valeur non fournie (ne rien vérifier), `null` = "aucun modèle". */
+async function assertTemplateInOrg(
+  db: AppDb,
+  organizationId: string,
+  templateId: string | null | undefined,
+): Promise<boolean> {
+  if (!templateId) return true;
+  const [found] = await db
+    .select({ id: documentTemplates.id, type: documentTemplates.type })
+    .from(documentTemplates)
+    .where(
+      and(
+        eq(documentTemplates.id, templateId),
+        eq(documentTemplates.organizationId, organizationId),
+      ),
+    )
+    .limit(1);
+  return Boolean(found) && (found.type === "quote" || found.type === "both");
+}
+
 function discountForDb(discount: DocumentDraftInput["globalDiscount"]) {
   if (!discount) return { type: null, value: null };
   return { type: discount.type, value: String(discount.value) };
@@ -93,6 +113,9 @@ export async function createDraft(
   if (!(await assertClientInOrg(db, organizationId, data.clientId))) {
     return { ok: false, errors: { clientId: "Client introuvable." } };
   }
+  if (!(await assertTemplateInOrg(db, organizationId, data.templateId))) {
+    return { ok: false, errors: { templateId: "Modèle introuvable." } };
+  }
 
   const totals = recalculateDocumentTotals(data.lines, data.globalDiscount);
   const discount = discountForDb(data.globalDiscount);
@@ -102,6 +125,7 @@ export async function createDraft(
     .values({
       organizationId,
       clientId: data.clientId,
+      templateId: data.templateId || null,
       status: "draft",
       issueDate: data.issueDate,
       validUntil: data.validUntil,
@@ -156,6 +180,9 @@ export async function updateDraft(
   if (!(await assertClientInOrg(db, organizationId, data.clientId))) {
     return { ok: false, errors: { clientId: "Client introuvable." } };
   }
+  if (!(await assertTemplateInOrg(db, organizationId, data.templateId))) {
+    return { ok: false, errors: { templateId: "Modèle introuvable." } };
+  }
 
   const totals = recalculateDocumentTotals(data.lines, data.globalDiscount);
   const discount = discountForDb(data.globalDiscount);
@@ -164,6 +191,7 @@ export async function updateDraft(
     .update(quotes)
     .set({
       clientId: data.clientId,
+      templateId: data.templateId || null,
       issueDate: data.issueDate,
       validUntil: data.validUntil,
       notes: data.notes,
@@ -243,6 +271,7 @@ export async function duplicate(
     .values({
       organizationId,
       clientId: source.clientId,
+      templateId: source.templateId,
       status: "draft",
       issueDate: null,
       validUntil: source.validUntil,

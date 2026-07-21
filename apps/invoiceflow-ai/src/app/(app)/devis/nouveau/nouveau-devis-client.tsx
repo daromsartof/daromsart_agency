@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { PageHeader, toast } from "@daromsart/ui";
-import { DocumentForm } from "@/modules/documents/document-form";
+import { DocumentForm, type DocumentTemplateOption } from "@/modules/documents/document-form";
 import { createQuoteAction } from "@/modules/quotes/actions";
 import { emptyDocumentFormValues, type DocumentFormValues } from "@/modules/documents/document-form-schema";
 
@@ -11,6 +11,8 @@ export interface NouveauDevisClientProps {
   vatRateDefault: number;
   quoteValidityDays: number;
   preselectedClient?: { id: string; displayName: string };
+  templateOptions: DocumentTemplateOption[];
+  defaultTemplateId: string;
 }
 
 export function NouveauDevisClient({
@@ -18,11 +20,13 @@ export function NouveauDevisClient({
   vatRateDefault,
   quoteValidityDays,
   preselectedClient,
+  templateOptions,
+  defaultTemplateId,
 }: NouveauDevisClientProps) {
   const router = useRouter();
 
   const defaultValues: DocumentFormValues = {
-    ...emptyDocumentFormValues(vatRateDefault, quoteValidityDays),
+    ...emptyDocumentFormValues(vatRateDefault, quoteValidityDays, defaultTemplateId),
     clientId: preselectedClient?.id ?? "",
     clientLabel: preselectedClient?.displayName ?? "",
   };
@@ -36,6 +40,7 @@ export function NouveauDevisClient({
       <DocumentForm
         defaultValues={defaultValues}
         vatRateOptions={vatRateOptions}
+        templateOptions={templateOptions}
         submitLabel="Créer le devis"
         onSubmit={(input) => createQuoteAction(input)}
         onSuccess={(id) => {

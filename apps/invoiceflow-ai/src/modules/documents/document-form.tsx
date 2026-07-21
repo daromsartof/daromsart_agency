@@ -30,13 +30,25 @@ import {
   type DocumentFormValues,
 } from "./document-form-schema";
 
+// Radix Select interdit `<SelectItem value="">` (réservée au clear interne) :
+// sentinels dédiés, traduits en "" au niveau du champ RHF.
+const NO_DISCOUNT_VALUE = "none";
+const NO_TEMPLATE_VALUE = "default";
+
 export type DocumentFormSubmitResult =
   | { ok: true; id?: string }
   | { ok: false; errors?: Record<string, string> };
 
+export interface DocumentTemplateOption {
+  id: string;
+  name: string;
+  isDefault: boolean;
+}
+
 export interface DocumentFormProps {
   defaultValues: DocumentFormValues;
   vatRateOptions: number[];
+  templateOptions?: DocumentTemplateOption[];
   onSubmit: (input: DocumentDraftInput) => Promise<DocumentFormSubmitResult>;
   onSuccess?: (id?: string) => void;
   submitLabel?: string;
@@ -50,6 +62,7 @@ export interface DocumentFormProps {
 export function DocumentForm({
   defaultValues,
   vatRateOptions,
+  templateOptions = [],
   onSubmit,
   onSuccess,
   submitLabel = "Enregistrer",
@@ -132,15 +145,38 @@ export function DocumentForm({
               </FormItem>
             )}
           />
-          <FormItem>
-            <FormLabel>Modèle</FormLabel>
-            <Select disabled>
-              <SelectTrigger>
-                <SelectValue placeholder="Modèle par défaut (bientôt disponible)" />
-              </SelectTrigger>
-              <SelectContent />
-            </Select>
-          </FormItem>
+          <FormField
+            control={form.control}
+            name="templateId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Modèle</FormLabel>
+                <Select
+                  value={field.value || NO_TEMPLATE_VALUE}
+                  onValueChange={(value) =>
+                    field.onChange(value === NO_TEMPLATE_VALUE ? "" : value)
+                  }
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Modèle par défaut de l'organisation" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {/* Radix interdit une SelectItem `value=""` (réservé au clear) : sentinel dédié. */}
+                    <SelectItem value={NO_TEMPLATE_VALUE}>Modèle par défaut</SelectItem>
+                    {templateOptions.map((template) => (
+                      <SelectItem key={template.id} value={template.id}>
+                        {template.name}
+                        {template.isDefault ? " (défaut)" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         </div>
 
         <div>
@@ -156,14 +192,19 @@ export function DocumentForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Remise globale</FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
+                  <Select
+                    value={field.value || NO_DISCOUNT_VALUE}
+                    onValueChange={(value) =>
+                      field.onChange(value === NO_DISCOUNT_VALUE ? "" : value)
+                    }
+                  >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="">Aucune remise</SelectItem>
+                      <SelectItem value={NO_DISCOUNT_VALUE}>Aucune remise</SelectItem>
                       <SelectItem value="percent">Pourcentage</SelectItem>
                       <SelectItem value="amount">Montant fixe</SelectItem>
                     </SelectContent>

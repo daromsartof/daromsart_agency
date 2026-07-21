@@ -87,6 +87,8 @@ export interface PdfSignature {
 export interface PdfTemplateOptions {
   accentColor: string;
   showLogo: boolean;
+  logoPosition: "left" | "right";
+  font: "sans" | "serif";
   columns: {
     unit: boolean;
     vatPerLine: boolean;
@@ -114,5 +116,7 @@ export interface DocumentPdfInput {
 export const DEFAULT_PDF_TEMPLATE_OPTIONS: PdfTemplateOptions = {
   accentColor: "#7367F0",
   showLogo: true,
+  logoPosition: "left",
+  font: "sans",
   columns: { unit: true, vatPerLine: true, discountPerLine: true },
 };

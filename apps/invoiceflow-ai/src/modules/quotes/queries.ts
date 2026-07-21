@@ -135,6 +135,7 @@ export interface QuoteDetail {
   organizationId: string;
   clientId: string;
   clientName: string;
+  templateId: string | null;
   status: QuoteStatus;
   number: string | null;
   shareToken: string | null;
@@ -165,6 +166,7 @@ export async function getQuoteById(
       organizationId: quotes.organizationId,
       clientId: quotes.clientId,
       clientName: clients.displayName,
+      templateId: quotes.templateId,
       status: quotes.status,
       number: quotes.number,
       shareToken: quotes.shareToken,
@@ -200,6 +202,7 @@ export async function getQuoteById(
     organizationId: quote.organizationId,
     clientId: quote.clientId,
     clientName: quote.clientName,
+    templateId: quote.templateId,
     status: quote.status as QuoteStatus,
     number: quote.number,
     shareToken: quote.shareToken,

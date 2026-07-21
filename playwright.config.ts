@@ -1,4 +1,11 @@
+import path from "node:path";
+import { config } from "dotenv";
 import { defineConfig, devices } from "@playwright/test";
+
+// `.env` vit dans apps/invoiceflow-ai (pas de .env racine) : SEED_ADMIN_EMAIL/
+// PASSWORD utilisés par les specs doivent être chargés explicitement, ce
+// fichier tournant depuis la racine du monorepo.
+config({ path: path.join(__dirname, "apps/invoiceflow-ai/.env") });
 
 /**
  * Config e2e. Le serveur de dev de l'app est lancé automatiquement.

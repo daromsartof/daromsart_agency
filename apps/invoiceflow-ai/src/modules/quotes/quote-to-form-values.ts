@@ -6,6 +6,7 @@ export function quoteToFormValues(quote: QuoteDetail): DocumentFormValues {
   return {
     clientId: quote.clientId,
     clientLabel: quote.clientName,
+    templateId: quote.templateId ?? "",
     issueDate: quote.issueDate ?? undefined,
     validUntil: quote.validUntil ?? undefined,
     notes: quote.notes ?? "",

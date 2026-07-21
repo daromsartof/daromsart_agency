@@ -5,3 +5,4 @@ export * from "./totals";
 export * from "./status";
 export * from "./schemas/document";
 export * from "./numbering";
+export * from "./schemas/template";

@@ -104,6 +104,20 @@ describe("renderDocumentPdf", () => {
     expect(buffer.subarray(0, 5).toString("utf8")).toBe("%PDF-");
   });
 
+  it("rend avec la police serif et le logo à droite (options de modèle)", async () => {
+    const buffer = await renderDocumentPdf(
+      fixture({
+        template: {
+          ...DEFAULT_PDF_TEMPLATE_OPTIONS,
+          font: "serif",
+          logoPosition: "right",
+          accentColor: "#28C76F",
+        },
+      }),
+    );
+    expect(buffer.subarray(0, 5).toString("utf8")).toBe("%PDF-");
+  });
+
   it("rend un document sans lignes ni notes (cas limite)", async () => {
     const buffer = await renderDocumentPdf(
       fixture({

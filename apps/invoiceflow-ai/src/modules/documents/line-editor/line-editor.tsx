@@ -22,6 +22,9 @@ import {
   type DocumentFormValues,
 } from "../document-form-schema";
 
+// Radix Select interdit `<SelectItem value="">` (réservée au clear interne).
+const NO_DISCOUNT_VALUE = "none";
+
 export interface LineEditorProps {
   control: Control<DocumentFormValues>;
   vatRateOptions: number[];
@@ -157,14 +160,20 @@ export function LineEditor({ control, vatRateOptions }: LineEditorProps) {
                   name={`lines.${index}.discountType`}
                   render={({ field }) => (
                     <FormItem>
-                      <Select value={field.value} onValueChange={field.onChange}>
+                      <Select
+                        value={field.value || NO_DISCOUNT_VALUE}
+                        onValueChange={(value) =>
+                          field.onChange(value === NO_DISCOUNT_VALUE ? "" : value)
+                        }
+                      >
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Remise" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">Aucune remise</SelectItem>
+                          {/* Radix interdit `value=""` (réservé au clear) : sentinel dédié. */}
+                          <SelectItem value={NO_DISCOUNT_VALUE}>Aucune remise</SelectItem>
                           <SelectItem value="percent">Remise %</SelectItem>
                           <SelectItem value="amount">Remise €</SelectItem>
                         </SelectContent>

@@ -7,9 +7,11 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { createFsStorage } from "@daromsart/storage";
 import { renderDocumentPdf } from "@daromsart/pdf";
+import { DEFAULT_TEMPLATE_OPTIONS } from "@daromsart/core";
 import * as schema from "../../db/schema";
-import { clients, organizations, quotes } from "../../db/schema";
+import { clients, documentTemplates, organizations, quotes } from "../../db/schema";
 import { createDraft, issueQuote } from "../quotes/mutations";
+import { createTemplate, setDefaultTemplate } from "../templates/mutations";
 import { buildQuotePdfInput } from "./pdf";
 
 const url = process.env.TEST_DATABASE_URL;
@@ -52,6 +54,7 @@ beforeAll(async () => {
 afterAll(async () => {
   await db.delete(quotes).where(eq(quotes.organizationId, orgId));
   await db.delete(clients).where(eq(clients.organizationId, orgId));
+  await db.delete(documentTemplates).where(eq(documentTemplates.organizationId, orgId));
   await db.delete(organizations).where(eq(organizations.id, orgId));
   await rm(storageDir, { recursive: true, force: true });
   await client.end({ timeout: 5 });
@@ -111,5 +114,48 @@ describe("buildQuotePdfInput", () => {
       "00000000-0000-0000-0000-000000000000",
     );
     expect(input).toBeNull();
+  });
+
+  it("applique les options du modèle explicitement choisi par le devis", async () => {
+    const template = await createTemplate(db, orgId, {
+      name: "Modèle explicite",
+      type: "quote",
+      options: { ...DEFAULT_TEMPLATE_OPTIONS, accentColor: "#28C76F", font: "serif" },
+    });
+    expect(template.ok).toBe(true);
+    if (!template.ok) return;
+
+    const created = await createDraft(db, orgId, {
+      clientId,
+      templateId: template.id,
+      lines: [{ description: "Prestation", quantity: 1, unitPriceCents: 10000, vatRate: 20 }],
+    });
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    const input = await buildQuotePdfInput(db, storage(), orgId, created.id);
+    expect(input?.template.accentColor).toBe("#28C76F");
+    expect(input?.template.font).toBe("serif");
+  });
+
+  it("retombe sur le modèle par défaut de l'organisation si le devis n'en choisit pas", async () => {
+    const template = await createTemplate(db, orgId, {
+      name: "Modèle par défaut org",
+      type: "quote",
+      options: { ...DEFAULT_TEMPLATE_OPTIONS, accentColor: "#EA5455" },
+    });
+    expect(template.ok).toBe(true);
+    if (!template.ok) return;
+    await setDefaultTemplate(db, orgId, template.id);
+
+    const created = await createDraft(db, orgId, {
+      clientId,
+      lines: [{ description: "Prestation", quantity: 1, unitPriceCents: 10000, vatRate: 20 }],
+    });
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    const input = await buildQuotePdfInput(db, storage(), orgId, created.id);
+    expect(input?.template.accentColor).toBe("#EA5455");
   });
 });

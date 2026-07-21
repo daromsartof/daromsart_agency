@@ -33,6 +33,7 @@ export type DocumentLineData = z.output<typeof documentLineSchema>;
 
 export const documentDraftSchema = z.object({
   clientId: z.string().uuid("Le client est requis."),
+  templateId: z.string().uuid().nullable().optional(),
   issueDate: z.coerce.date().optional(),
   validUntil: z.coerce.date().optional(),
   notes: z.string().trim().optional(),
