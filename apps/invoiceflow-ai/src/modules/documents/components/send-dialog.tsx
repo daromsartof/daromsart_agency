@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { X } from "lucide-react";
 import {
   Badge,
@@ -23,21 +23,32 @@ const EMAIL_LIKE = /^\S+@\S+\.\S+$/;
 export interface SendDialogSendResult {
   ok: boolean;
   errors?: Record<string, string>;
+  /** Story 16 (relance) : au lieu d'un échec, demande confirmation explicite
+   * avant de renvoyer avec `confirmed: true` (anti-spam léger < 24 h). */
+  needsConfirmation?: boolean;
 }
 
 export interface SendDialogProps {
-  trigger: React.ReactNode;
+  /** Si omis, le dialog est piloté en externe via `open`/`onOpenChange`
+   * (action rapide depuis une liste, story 16). */
+  trigger?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   defaultTo: string[];
   defaultSubject: string;
   defaultBody: string;
   /** Bannière "sera émis puis envoyé" (devis/facture encore brouillon). */
   willIssueFirst?: boolean;
+  /** Bannière additionnelle libre (ex. "en retard depuis N jours", story 16). */
+  banner?: React.ReactNode;
   attachmentLabel?: string;
   onSend: (input: {
     to: string[];
     cc?: string[];
     subject: string;
     bodyText: string;
+    /** `true` sur un renvoi confirmé après `needsConfirmation` (story 16). */
+    confirmed?: boolean;
   }) => Promise<SendDialogSendResult>;
   onSuccess?: () => void;
 }
@@ -103,40 +114,58 @@ function EmailTokens({
 /** Dialog d'envoi de document par email (E-13) — partagé devis/facture. */
 export function SendDialog({
   trigger,
+  open: openProp,
+  onOpenChange,
   defaultTo,
   defaultSubject,
   defaultBody,
   willIssueFirst,
+  banner,
   attachmentLabel = "Le PDF du document sera joint automatiquement.",
   onSend,
   onSuccess,
 }: SendDialogProps) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = trigger ? internalOpen : (openProp ?? false);
+  const setOpen = trigger ? setInternalOpen : (next: boolean) => onOpenChange?.(next);
+
   const [to, setTo] = useState<string[]>(defaultTo);
   const [cc, setCc] = useState<string[]>([]);
   const [subject, setSubject] = useState(defaultSubject);
   const [bodyText, setBodyText] = useState(defaultBody);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
   const [pending, startTransition] = useTransition();
 
-  function handleOpenChange(next: boolean) {
-    setOpen(next);
-    if (next) {
+  useEffect(() => {
+    if (open) {
       setTo(defaultTo);
       setCc([]);
       setSubject(defaultSubject);
       setBodyText(defaultBody);
       setErrors({});
+      setAwaitingConfirmation(false);
     }
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- ne réinitialise qu'à l'ouverture
+  }, [open]);
 
-  function handleSend() {
+  function handleSend(confirmed = false) {
     if (to.length === 0 || !to.every((t) => EMAIL_LIKE.test(t))) {
       setErrors({ to: "Au moins un destinataire avec une adresse email valide." });
       return;
     }
     startTransition(async () => {
-      const result = await onSend({ to, cc: cc.length ? cc : undefined, subject, bodyText });
+      const result = await onSend({
+        to,
+        cc: cc.length ? cc : undefined,
+        subject,
+        bodyText,
+        confirmed,
+      });
+      if (result.needsConfirmation) {
+        setAwaitingConfirmation(true);
+        return;
+      }
       if (!result.ok) {
         setErrors(result.errors ?? { _root: "Échec de l'envoi." });
         toast.error(result.errors?._root ?? "Échec de l'envoi.");
@@ -149,8 +178,8 @@ export function SendDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
+    <Dialog open={open} onOpenChange={setOpen}>
+      {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Envoyer par email</DialogTitle>
@@ -160,6 +189,14 @@ export function SendDialog({
             </DialogDescription>
           ) : null}
         </DialogHeader>
+
+        {banner}
+
+        {awaitingConfirmation ? (
+          <div className="rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-warning-foreground">
+            Une relance a déjà été envoyée il y a moins de 24 h. Confirmer l'envoi quand même ?
+          </div>
+        ) : null}
 
         <div className="space-y-4">
           <EmailTokens
@@ -200,9 +237,15 @@ export function SendDialog({
           <Button variant="outline" onClick={() => setOpen(false)} disabled={pending}>
             Annuler
           </Button>
-          <Button onClick={handleSend} disabled={pending}>
-            {pending ? "Envoi…" : "Envoyer"}
-          </Button>
+          {awaitingConfirmation ? (
+            <Button onClick={() => handleSend(true)} disabled={pending}>
+              {pending ? "Envoi…" : "Confirmer et envoyer"}
+            </Button>
+          ) : (
+            <Button onClick={() => handleSend(false)} disabled={pending}>
+              {pending ? "Envoi…" : "Envoyer"}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

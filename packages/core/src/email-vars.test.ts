@@ -37,4 +37,18 @@ describe("renderEmailVariables", () => {
   it("substitue plusieurs occurrences de la même variable", () => {
     expect(renderEmailVariables("{client} - {client}", { client: "X" })).toBe("X - X");
   });
+
+  it("substitue {jours_retard} (story 16, relance)", () => {
+    const result = renderEmailVariables("En retard de {jours_retard} jours.", {
+      jours_retard: "12",
+    });
+    expect(result).toBe("En retard de 12 jours.");
+  });
+
+  it("laisse {jours_retard} intact sur un email non-relance (variable non pertinente, absente de vars)", () => {
+    const result = renderEmailVariables("Total {total}, retard {jours_retard}.", {
+      total: "100,00 €",
+    });
+    expect(result).toBe("Total 100,00 €, retard {jours_retard}.");
+  });
 });

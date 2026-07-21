@@ -34,7 +34,8 @@ export const DEFAULT_LEGAL_FOOTER =
 /**
  * Textes d'email par défaut (H12), configurables dans Paramètres (story 22).
  * Variables résolues à l'envoi par `renderEmailVariables` (@daromsart/core) :
- * `{client}/{numero}/{total}/{lien}/{echeance}`.
+ * `{client}/{numero}/{total}/{lien}/{echeance}`, `{jours_retard}` (relance
+ * uniquement, story 16).
  */
 export const DEFAULT_EMAIL_DEFAULTS: EmailDefaults = {
   quote: {
@@ -47,7 +48,7 @@ export const DEFAULT_EMAIL_DEFAULTS: EmailDefaults = {
   },
   reminder: {
     subject: "Rappel — facture {numero} en attente de règlement",
-    body: "Bonjour {client},\n\nSauf erreur de notre part, notre facture {numero} d'un montant de {total}, échue le {echeance}, demeure impayée à ce jour.\n\nVous pouvez la consulter et procéder au règlement ici : {lien}\n\nMerci de bien vouloir régulariser dans les meilleurs délais.\n\nCordialement.",
+    body: "Bonjour {client},\n\nSauf erreur de notre part, notre facture {numero} d'un montant de {total}, échue le {echeance} (en retard de {jours_retard} jours), demeure impayée à ce jour.\n\nVous pouvez la consulter et procéder au règlement ici : {lien}\n\nMerci de bien vouloir régulariser dans les meilleurs délais.\n\nCordialement.",
   },
 };
 
