@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Circle } from "lucide-react";
 import type { DocumentEventRow } from "../events";
 
@@ -30,8 +31,16 @@ function formatDateTime(date: Date): string {
   });
 }
 
+/** Une ligne peut porter un libellé/lien de document (activité du dashboard,
+ * story 19 — plusieurs documents mêlés) ; sans ces champs, comportement
+ * inchangé (détail d'un document unique, sa propre timeline). */
+export interface EventTimelineRow extends DocumentEventRow {
+  label?: string;
+  href?: string | null;
+}
+
 export interface EventTimelineProps {
-  events: DocumentEventRow[];
+  events: EventTimelineRow[];
 }
 
 /** Timeline verticale des événements du cycle de vie d'un document (E-12). */
@@ -46,9 +55,24 @@ export function EventTimeline({ events }: EventTimelineProps) {
         <li key={event.id} className="flex gap-3">
           <Circle className="mt-0.5 h-3 w-3 shrink-0 fill-primary text-primary" />
           <div>
-            <p className="text-sm font-medium">
-              {EVENT_LABELS[event.eventType] ?? event.eventType}
-            </p>
+            {event.label ? (
+              <p className="text-sm font-medium">
+                {event.href ? (
+                  <Link href={event.href} className="hover:underline">
+                    {event.label}
+                  </Link>
+                ) : (
+                  event.label
+                )}{" "}
+                <span className="font-normal text-muted-foreground">
+                  — {EVENT_LABELS[event.eventType] ?? event.eventType}
+                </span>
+              </p>
+            ) : (
+              <p className="text-sm font-medium">
+                {EVENT_LABELS[event.eventType] ?? event.eventType}
+              </p>
+            )}
             <p className="text-xs text-muted-foreground">
               {formatDateTime(event.createdAt)}
             </p>
