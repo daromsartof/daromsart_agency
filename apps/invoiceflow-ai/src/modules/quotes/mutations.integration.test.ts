@@ -4,9 +4,16 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import type { DocumentDraftInput } from "@daromsart/core";
 import * as schema from "../../db/schema";
-import { clients, organizations, quoteLines, quotes } from "../../db/schema";
+import { clients, numberSequences, organizations, quoteLines, quotes } from "../../db/schema";
 import { getQuoteById } from "./queries";
-import { createDraft, deleteDraft, duplicate, updateDraft } from "./mutations";
+import {
+  createDraft,
+  deleteDraft,
+  duplicate,
+  issueQuote,
+  markRefused,
+  updateDraft,
+} from "./mutations";
 
 const url = process.env.TEST_DATABASE_URL;
 const client = postgres(url ?? "", { max: 1 });
@@ -183,6 +190,114 @@ describe("deleteDraft", () => {
 
     const found = await getQuoteById(db, orgAId, created.id);
     expect(found).not.toBeNull();
+  });
+});
+
+describe("issueQuote", () => {
+  it("émet un devis brouillon : numéro, share_token, sent_at, statut sent", async () => {
+    const created = await createDraft(db, orgAId, draftInput());
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    const result = await issueQuote(db, orgAId, created.id);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.number).toMatch(/^DEV-\d{4}-\d{4}$/);
+
+    const found = await getQuoteById(db, orgAId, created.id);
+    expect(found?.status).toBe("sent");
+    expect(found?.number).toBe(result.number);
+    expect(found?.shareToken).toBeTruthy();
+    expect(found?.sentAt).not.toBeNull();
+  });
+
+  it("refuse d'émettre un devis déjà émis", async () => {
+    const created = await createDraft(db, orgAId, draftInput());
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+    await issueQuote(db, orgAId, created.id);
+
+    const result = await issueQuote(db, orgAId, created.id);
+    expect(result.ok).toBe(false);
+  });
+
+  it("refuse d'émettre un devis sans lignes", async () => {
+    const created = await createDraft(db, orgAId, draftInput());
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+    await db.delete(quoteLines).where(eq(quoteLines.quoteId, created.id));
+
+    const result = await issueQuote(db, orgAId, created.id);
+    expect(result.ok).toBe(false);
+  });
+
+  it("refuse d'émettre pour un client archivé et ne consomme pas de numéro", async () => {
+    const [archived] = await db
+      .insert(clients)
+      .values({
+        organizationId: orgAId,
+        type: "company",
+        displayName: "Client archivé (numbering)",
+        archivedAt: new Date(),
+      })
+      .returning();
+
+    const created = await createDraft(db, orgAId, draftInput({ clientId: archived.id }));
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    const [before] = await db
+      .select({ lastNumber: numberSequences.lastNumber })
+      .from(numberSequences)
+      .where(eq(numberSequences.organizationId, orgAId));
+
+    const result = await issueQuote(db, orgAId, created.id);
+    expect(result.ok).toBe(false);
+
+    const [after] = await db
+      .select({ lastNumber: numberSequences.lastNumber })
+      .from(numberSequences)
+      .where(eq(numberSequences.organizationId, orgAId));
+    expect(after?.lastNumber ?? 0).toBe(before?.lastNumber ?? 0);
+  });
+
+  it("refuse la modification et la suppression après émission", async () => {
+    const created = await createDraft(db, orgAId, draftInput());
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+    await issueQuote(db, orgAId, created.id);
+
+    const updateResult = await updateDraft(db, orgAId, created.id, draftInput());
+    expect(updateResult.ok).toBe(false);
+
+    const deleteResult = await deleteDraft(db, orgAId, created.id);
+    expect(deleteResult.ok).toBe(false);
+  });
+});
+
+describe("markRefused", () => {
+  it("marque un devis émis comme refusé, avec motif optionnel", async () => {
+    const created = await createDraft(db, orgAId, draftInput());
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+    await issueQuote(db, orgAId, created.id);
+
+    const result = await markRefused(db, orgAId, created.id, "Budget annulé");
+    expect(result.ok).toBe(true);
+
+    const found = await getQuoteById(db, orgAId, created.id);
+    expect(found?.status).toBe("refused");
+    expect(found?.refusalReason).toBe("Budget annulé");
+    expect(found?.refusedAt).not.toBeNull();
+  });
+
+  it("refuse la transition draft → refused", async () => {
+    const created = await createDraft(db, orgAId, draftInput());
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+
+    const result = await markRefused(db, orgAId, created.id);
+    expect(result.ok).toBe(false);
   });
 });
 

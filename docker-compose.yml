@@ -19,7 +19,8 @@ services:
       POSTGRES_PASSWORD: invoiceflow
       POSTGRES_DB: invoiceflow
     ports:
-      - "5432:5432"
+      # 5433 côté hôte : le 5432 est souvent pris par un Postgres système
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:

@@ -13,6 +13,14 @@ const nextConfig = {
   // (clé sous `experimental` sur Next 14 ; top-level à partir de Next 15)
   experimental: {
     outputFileTracingRoot: path.join(dirname, "../../"),
+    // @react-pdf/renderer embarque un reconciler React "maison" qui exige le
+    // runtime React standard : bundlé via webpack, il hérite du build React
+    // "react-server" (conditions RSC) appliqué aux route handlers de l'App
+    // Router, qui n'expose pas `React.Component` de la même façon et fait
+    // planter le reconciler (`TypeError: a.Component is not a constructor`).
+    // Externaliser le paquet le fait charger via `require` Node normal, avec
+    // le vrai `react`, plutôt que d'être bundlé/aliasé par webpack.
+    serverComponentsExternalPackages: ["@react-pdf/renderer"],
   },
   // Les packages du monorepo sont consommés en source (pas de build préalable).
   transpilePackages: ["@daromsart/ui", "@daromsart/theme"],

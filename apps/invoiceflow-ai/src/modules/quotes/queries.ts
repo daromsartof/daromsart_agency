@@ -137,6 +137,10 @@ export interface QuoteDetail {
   clientName: string;
   status: QuoteStatus;
   number: string | null;
+  shareToken: string | null;
+  sentAt: Date | null;
+  refusedAt: Date | null;
+  refusalReason: string | null;
   issueDate: Date | null;
   validUntil: Date | null;
   notes: string | null;
@@ -163,6 +167,10 @@ export async function getQuoteById(
       clientName: clients.displayName,
       status: quotes.status,
       number: quotes.number,
+      shareToken: quotes.shareToken,
+      sentAt: quotes.sentAt,
+      refusedAt: quotes.refusedAt,
+      refusalReason: quotes.refusalReason,
       issueDate: quotes.issueDate,
       validUntil: quotes.validUntil,
       notes: quotes.notes,
@@ -194,6 +202,10 @@ export async function getQuoteById(
     clientName: quote.clientName,
     status: quote.status as QuoteStatus,
     number: quote.number,
+    shareToken: quote.shareToken,
+    sentAt: quote.sentAt,
+    refusedAt: quote.refusedAt,
+    refusalReason: quote.refusalReason,
     issueDate: quote.issueDate,
     validUntil: quote.validUntil,
     notes: quote.notes,

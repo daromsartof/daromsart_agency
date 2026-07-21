@@ -2,6 +2,11 @@
 export interface Storage {
   /** Écrit un objet et renvoie sa clé. */
   put(key: string, body: Buffer | Uint8Array, contentType: string): Promise<void>;
+  /**
+   * Relit les octets d'un objet (ex. embarquer un logo dans un PDF sans
+   * dépendre d'un accès réseau au rendu). `null` si l'objet est absent.
+   */
+  get(key: string): Promise<Buffer | null>;
   /** URL permettant de lire l'objet (signée en s3, route locale en fs). */
   getSignedUrl(key: string, expiresInSeconds?: number): Promise<string>;
   /** Supprime l'objet (idempotent : ne lève pas si absent). */

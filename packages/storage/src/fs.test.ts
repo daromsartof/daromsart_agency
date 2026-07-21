@@ -34,6 +34,17 @@ describe("createFsStorage", () => {
     await expect(storage.delete("absent.png")).resolves.toBeUndefined();
   });
 
+  it("get() relit les octets, null si absent", async () => {
+    const storage = createFsStorage({ driver: "fs", basePath: dir });
+    await storage.put("logos/org-1.png", Buffer.from("fake-png"), "image/png");
+
+    const bytes = await storage.get("logos/org-1.png");
+    expect(bytes?.toString()).toBe("fake-png");
+
+    const missing = await storage.get("absent.png");
+    expect(missing).toBeNull();
+  });
+
   it("rejette une clé qui tente une évasion (path traversal)", async () => {
     const storage = createFsStorage({ driver: "fs", basePath: dir });
     await expect(

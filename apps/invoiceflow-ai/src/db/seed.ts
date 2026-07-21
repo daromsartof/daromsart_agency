@@ -5,7 +5,7 @@ import { db } from "./index";
 import * as schema from "./schema";
 import { clientContacts, clients, memberships, organizations, quotes, user } from "./schema";
 import { env } from "../lib/env";
-import { createDraft } from "../modules/quotes/mutations";
+import { createDraft, issueQuote } from "../modules/quotes/mutations";
 
 interface SeedClient {
   type: "company" | "individual";
@@ -228,26 +228,33 @@ async function main() {
       console.warn("• Pas assez de clients pour semer 6 devis — étape ignorée.");
     } else {
       const [c1, c2, c3, c4, c5, c6] = seedClients;
+      const issueDate = new Date();
       const validUntil = new Date();
       validUntil.setDate(validUntil.getDate() + 30);
 
-      await createDraft(db, org.id, {
+      const quote1 = await createDraft(db, org.id, {
         clientId: c1.id,
+        issueDate,
         validUntil,
         lines: [
           { description: "Développement site vitrine", quantity: 1, unitPriceCents: 350000, vatRate: 20 },
         ],
       });
-      await createDraft(db, org.id, {
+      const quote2 = await createDraft(db, org.id, {
         clientId: c2.id,
+        issueDate,
         validUntil,
         lines: [
           { description: "Prestation de conseil", quantity: 5, unitPriceCents: 60000, vatRate: 20 },
           { description: "Formation équipe (1 jour)", quantity: 1, unitPriceCents: 80000, vatRate: 10 },
         ],
       });
+      // 2 devis émis (numéro + share_token) pour peupler la story 08 (PDF, détail, activité).
+      if (quote1.ok) await issueQuote(db, org.id, quote1.id);
+      if (quote2.ok) await issueQuote(db, org.id, quote2.id);
       await createDraft(db, org.id, {
         clientId: c3.id,
+        issueDate,
         validUntil,
         globalDiscount: { type: "percent", value: 10 },
         lines: [
@@ -256,6 +263,7 @@ async function main() {
       });
       await createDraft(db, org.id, {
         clientId: c4.id,
+        issueDate,
         validUntil,
         lines: [
           {
@@ -269,6 +277,7 @@ async function main() {
       });
       await createDraft(db, org.id, {
         clientId: c5.id,
+        issueDate,
         validUntil,
         notes: "Devis pour association loi 1901 — franchise en base de TVA.",
         lines: [
@@ -277,6 +286,7 @@ async function main() {
       });
       await createDraft(db, org.id, {
         clientId: c6.id,
+        issueDate,
         validUntil,
         globalDiscount: { type: "amount", value: 5000 },
         lines: [
@@ -284,7 +294,7 @@ async function main() {
           { description: "Prestation B", quantity: 3, unitPriceCents: 25000, vatRate: 5.5 },
         ],
       });
-      console.info("✓ 6 devis de démonstration créés (brouillons).");
+      console.info("✓ 6 devis de démonstration créés (dont 2 émis).");
     }
   } else {
     console.info(`• ${existingQuoteCount} devis déjà présents.`);

@@ -1,4 +1,4 @@
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
 import type { FsStorageConfig, Storage } from "./types";
 
@@ -25,6 +25,14 @@ export function createFsStorage(config: FsStorageConfig): Storage {
       const target = resolveKey(key);
       await mkdir(dirname(target), { recursive: true });
       await writeFile(target, body);
+    },
+    async get(key) {
+      try {
+        return await readFile(resolveKey(key));
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code === "ENOENT") return null;
+        throw err;
+      }
     },
     async getSignedUrl(key) {
       // Normalise les séparateurs pour l'URL.

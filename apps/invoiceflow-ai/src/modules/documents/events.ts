@@ -1,3 +1,4 @@
+import { and, desc, eq } from "drizzle-orm";
 import type { AppDb } from "../../db/types";
 import { documentEvents } from "../../db/schema";
 
@@ -26,4 +27,38 @@ export async function addDocumentEvent(
     payload: params.payload,
     actorUserId: params.actorUserId ?? null,
   });
+}
+
+export interface DocumentEventRow {
+  id: string;
+  eventType: string;
+  payload: Record<string, unknown> | null;
+  actorUserId: string | null;
+  createdAt: Date;
+}
+
+/** Timeline d'un document (plus récent en premier), onglet "Activité"/détail. */
+export async function listDocumentEvents(
+  db: AppDb,
+  organizationId: string,
+  documentType: DocumentKind,
+  documentId: string,
+): Promise<DocumentEventRow[]> {
+  return db
+    .select({
+      id: documentEvents.id,
+      eventType: documentEvents.eventType,
+      payload: documentEvents.payload,
+      actorUserId: documentEvents.actorUserId,
+      createdAt: documentEvents.createdAt,
+    })
+    .from(documentEvents)
+    .where(
+      and(
+        eq(documentEvents.organizationId, organizationId),
+        eq(documentEvents.documentType, documentType),
+        eq(documentEvents.documentId, documentId),
+      ),
+    )
+    .orderBy(desc(documentEvents.createdAt));
 }

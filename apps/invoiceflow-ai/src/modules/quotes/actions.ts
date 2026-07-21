@@ -8,8 +8,11 @@ import {
   createDraft,
   deleteDraft,
   duplicate,
+  issueQuote,
+  markRefused,
   updateDraft,
   type CreateQuoteResult,
+  type IssueQuoteResult,
   type MutationResult,
 } from "./mutations";
 import { getQuoteById, type QuoteDetail } from "./queries";
@@ -68,4 +71,27 @@ export async function getQuoteForEditAction(
 ): Promise<QuoteDetail | null> {
   const organizationId = await requireOrganizationId();
   return getQuoteById(db, organizationId, quoteId);
+}
+
+export async function issueQuoteAction(quoteId: string): Promise<IssueQuoteResult> {
+  const organizationId = await requireOrganizationId();
+  const result = await issueQuote(db, organizationId, quoteId);
+  if (result.ok) {
+    revalidatePath("/devis");
+    revalidatePath(`/devis/${quoteId}`);
+  }
+  return result;
+}
+
+export async function markRefusedAction(
+  quoteId: string,
+  reason?: string,
+): Promise<MutationResult> {
+  const organizationId = await requireOrganizationId();
+  const result = await markRefused(db, organizationId, quoteId, reason);
+  if (result.ok) {
+    revalidatePath("/devis");
+    revalidatePath(`/devis/${quoteId}`);
+  }
+  return result;
 }
