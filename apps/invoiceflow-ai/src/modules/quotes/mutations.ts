@@ -1,11 +1,15 @@
+import { randomBytes } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import {
+  canTransition,
   documentDraftSchema,
   type DocumentDraftInput,
+  type QuoteStatus,
 } from "@daromsart/core";
 import type { AppDb } from "../../db/types";
-import { clients, quoteLines, quotes } from "../../db/schema";
+import { clients, organizations, quoteLines, quotes } from "../../db/schema";
 import { addDocumentEvent } from "../documents/events";
+import { issueNumber } from "../documents/numbering";
 import { recalculateDocumentTotals } from "../documents/recalculate";
 
 /**
@@ -278,4 +282,146 @@ export async function duplicate(
   });
 
   return { ok: true, id: created.id };
+}
+
+export type IssueQuoteResult =
+  | { ok: true; number: string }
+  | { ok: false; errors: Record<string, string> };
+
+function generateShareToken(): string {
+  return randomBytes(32).toString("base64url");
+}
+
+/**
+ * Émission (H6, H14) : dans une seule transaction — vérifs (brouillon, ≥1
+ * ligne, client non archivé) → numéro de séquence (verrou `FOR UPDATE`) →
+ * statut `sent` + `share_token` + `sent_at`. Toute erreur (ex. client
+ * archivé) annule la transaction : le compteur de séquence n'est jamais
+ * consommé pour une émission qui échoue (parade « trou de numérotation »,
+ * plans/story-08.md).
+ *
+ * Interprétation H14 (documentée ici faute d'état `issued` dédié pour les
+ * devis) : émettre un devis le fait passer directement à `sent`, avec
+ * `sent_at` = date d'émission — l'émission "prête à transmettre" et l'envoi
+ * effectif (story 10) ne sont pas distingués dans la machine à états.
+ */
+export async function issueQuote(
+  db: AppDb,
+  organizationId: string,
+  quoteId: string,
+): Promise<IssueQuoteResult> {
+  return db.transaction(async (tx) => {
+    const [existing] = await tx
+      .select({ id: quotes.id, status: quotes.status, clientId: quotes.clientId })
+      .from(quotes)
+      .where(and(eq(quotes.id, quoteId), eq(quotes.organizationId, organizationId)))
+      .limit(1);
+    if (!existing) {
+      return { ok: false, errors: { _root: "Devis introuvable." } };
+    }
+    if (!canTransition("quote", existing.status as QuoteStatus, "sent")) {
+      return { ok: false, errors: { _root: "Seul un devis brouillon peut être émis." } };
+    }
+
+    const lines = await tx
+      .select({ id: quoteLines.id })
+      .from(quoteLines)
+      .where(eq(quoteLines.quoteId, quoteId));
+    if (lines.length === 0) {
+      return { ok: false, errors: { _root: "Le devis doit contenir au moins une ligne." } };
+    }
+
+    const [client] = await tx
+      .select({ id: clients.id, archivedAt: clients.archivedAt })
+      .from(clients)
+      .where(
+        and(eq(clients.id, existing.clientId), eq(clients.organizationId, organizationId)),
+      )
+      .limit(1);
+    if (!client || client.archivedAt) {
+      return { ok: false, errors: { _root: "Client introuvable ou archivé." } };
+    }
+
+    const [org] = await tx
+      .select({ numberFormats: organizations.numberFormats })
+      .from(organizations)
+      .where(eq(organizations.id, organizationId))
+      .limit(1);
+    if (!org) {
+      return { ok: false, errors: { _root: "Organisation introuvable." } };
+    }
+
+    const now = new Date();
+    const number = await issueNumber(tx, {
+      organizationId,
+      kind: "quote",
+      year: now.getFullYear(),
+      format: org.numberFormats.quote,
+    });
+
+    await tx
+      .update(quotes)
+      .set({
+        status: "sent",
+        number,
+        shareToken: generateShareToken(),
+        sentAt: now,
+        updatedAt: now,
+      })
+      .where(eq(quotes.id, quoteId));
+
+    await addDocumentEvent(tx, {
+      organizationId,
+      documentType: "quote",
+      documentId: quoteId,
+      eventType: "issued",
+      payload: { number },
+    });
+
+    return { ok: true, number };
+  });
+}
+
+/**
+ * Refus manuel côté interne (motif optionnel) — ex. le client a refusé par
+ * un autre canal (téléphone, email hors app). Le refus déclenché par le
+ * client lui-même sur la page publique arrive en story 11.
+ */
+export async function markRefused(
+  db: AppDb,
+  organizationId: string,
+  quoteId: string,
+  reason?: string,
+): Promise<MutationResult> {
+  const [existing] = await db
+    .select({ id: quotes.id, status: quotes.status })
+    .from(quotes)
+    .where(and(eq(quotes.id, quoteId), eq(quotes.organizationId, organizationId)))
+    .limit(1);
+  if (!existing) {
+    return { ok: false, errors: { _root: "Devis introuvable." } };
+  }
+  if (!canTransition("quote", existing.status as QuoteStatus, "refused")) {
+    return { ok: false, errors: { _root: "Transition de statut invalide." } };
+  }
+
+  await db
+    .update(quotes)
+    .set({
+      status: "refused",
+      refusedAt: new Date(),
+      refusalReason: reason?.trim() || null,
+      updatedAt: new Date(),
+    })
+    .where(eq(quotes.id, quoteId));
+
+  await addDocumentEvent(db, {
+    organizationId,
+    documentType: "quote",
+    documentId: quoteId,
+    eventType: "refused",
+    payload: reason ? { reason } : undefined,
+  });
+
+  return { ok: true };
 }

@@ -33,6 +33,23 @@ export function createS3Storage(config: S3StorageConfig): Storage {
         }),
       );
     },
+    async get(key) {
+      try {
+        const result = await client.send(
+          new GetObjectCommand({ Bucket: config.bucket, Key: key }),
+        );
+        const body = result.Body;
+        if (!body) return null;
+        const chunks: Uint8Array[] = [];
+        for await (const chunk of body as AsyncIterable<Uint8Array>) {
+          chunks.push(chunk);
+        }
+        return Buffer.concat(chunks);
+      } catch (err) {
+        if ((err as { name?: string }).name === "NoSuchKey") return null;
+        throw err;
+      }
+    },
     async getSignedUrl(key, expiresInSeconds = DEFAULT_EXPIRES_SECONDS) {
       if (config.publicUrl) {
         return `${config.publicUrl.replace(/\/$/, "")}/${key}`;

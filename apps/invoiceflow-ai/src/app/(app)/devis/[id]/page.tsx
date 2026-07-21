@@ -1,7 +1,5 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import {
-  Button,
   Card,
   CardContent,
   CardHeader,
@@ -17,12 +15,17 @@ import {
   TableRow,
 } from "@daromsart/ui";
 import { db } from "@/db";
+import { env } from "@/lib/env";
 import { getCurrentOrganizationId, requireSession } from "@/modules/auth/session";
+import { listDocumentEvents } from "@/modules/documents/events";
+import { EventTimeline } from "@/modules/documents/components/event-timeline";
+import { QuoteDetailActions } from "@/modules/quotes/components/quote-detail-actions";
 import { getQuoteById } from "@/modules/quotes/queries";
 
 export const metadata = { title: "Devis" };
 
-function formatDateLong(date: Date): string {
+function formatDateLong(date: Date | null): string {
+  if (!date) return "—";
   return date.toLocaleDateString("fr-FR", {
     day: "numeric",
     month: "long",
@@ -30,10 +33,6 @@ function formatDateLong(date: Date): string {
   });
 }
 
-/**
- * Page détail minimale (E-11) : récapitulatif + bouton Modifier. Remplacée
- * par la story 08 (envoi, signature, PDF, historique des événements).
- */
 export default async function DevisDetailPage({
   params,
 }: {
@@ -50,112 +49,130 @@ export default async function DevisDetailPage({
     notFound();
   }
 
+  const events = await listDocumentEvents(db, organizationId, "quote", quote.id);
+  const publicUrl = quote.shareToken ? `${env.APP_URL}/p/devis/${quote.shareToken}` : null;
+  const pdfUrl = `/api/documents/devis/${quote.id}/pdf`;
+
   return (
     <>
       <PageHeader
         title={`Devis — ${quote.clientName}`}
-        description={quote.number ?? "Brouillon (numéro attribué à l'envoi)"}
+        description={quote.number ?? "Brouillon (numéro attribué à l'émission)"}
       >
-        {quote.status === "draft" ? (
-          <Button asChild size="sm">
-            <Link href={`/devis/${quote.id}/modifier`}>Modifier</Link>
-          </Button>
-        ) : null}
+        <QuoteDetailActions quote={quote} publicUrl={publicUrl} />
       </PageHeader>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="space-y-4 lg:col-span-2">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm text-muted-foreground">Statut</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <StatusBadge status={quote.status} />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm text-muted-foreground">
+                  Date d'émission
+                </CardTitle>
+              </CardHeader>
+              <CardContent>{formatDateLong(quote.issueDate)}</CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm text-muted-foreground">
+                  Valide jusqu'au
+                </CardTitle>
+              </CardHeader>
+              <CardContent>{formatDateLong(quote.validUntil)}</CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Lignes</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Description</TableHead>
+                    <TableHead className="text-right">Qté</TableHead>
+                    <TableHead className="text-right">PU</TableHead>
+                    <TableHead className="text-right">TVA</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {quote.lines.map((line) => (
+                    <TableRow key={line.id}>
+                      <TableCell>{line.description}</TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {line.quantity}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatCentsEUR(line.unitPriceCents)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {line.vatRate} %
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+
+              <div className="mt-4 ml-auto max-w-xs space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Sous-total HT</span>
+                  <span className="tabular-nums">{formatCentsEUR(quote.subtotalCents)}</span>
+                </div>
+                {quote.discountCents > 0 ? (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Remise</span>
+                    <span className="tabular-nums">
+                      -{formatCentsEUR(quote.discountCents)}
+                    </span>
+                  </div>
+                ) : null}
+                {Object.entries(quote.vatByRate).map(([rate, cents]) => (
+                  <div key={rate} className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">TVA {rate} %</span>
+                    <span className="tabular-nums">{formatCentsEUR(cents)}</span>
+                  </div>
+                ))}
+                <div className="flex justify-between border-t pt-1 font-semibold">
+                  <span>Total TTC</span>
+                  <span className="tabular-nums">{formatCentsEUR(quote.totalCents)}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Aperçu PDF</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <iframe
+                title="Aperçu PDF du devis"
+                src={pdfUrl}
+                className="h-[600px] w-full rounded border"
+              />
+            </CardContent>
+          </Card>
+        </div>
+
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm text-muted-foreground">Statut</CardTitle>
+            <CardTitle>Activité</CardTitle>
           </CardHeader>
           <CardContent>
-            <StatusBadge status={quote.status} />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm text-muted-foreground">
-              Date d'émission
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {quote.issueDate
-              ? formatDateLong(quote.issueDate)
-              : "—"}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm text-muted-foreground">
-              Valide jusqu'au
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {quote.validUntil
-              ? formatDateLong(quote.validUntil)
-              : "—"}
+            <EventTimeline events={events} />
           </CardContent>
         </Card>
       </div>
-
-      <Card className="mt-4">
-        <CardHeader>
-          <CardTitle>Lignes</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Description</TableHead>
-                <TableHead className="text-right">Qté</TableHead>
-                <TableHead className="text-right">PU</TableHead>
-                <TableHead className="text-right">TVA</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {quote.lines.map((line) => (
-                <TableRow key={line.id}>
-                  <TableCell>{line.description}</TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {line.quantity}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {formatCentsEUR(line.unitPriceCents)}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {line.vatRate} %
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-
-          <div className="mt-4 ml-auto max-w-xs space-y-1">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Sous-total HT</span>
-              <span className="tabular-nums">{formatCentsEUR(quote.subtotalCents)}</span>
-            </div>
-            {quote.discountCents > 0 ? (
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Remise</span>
-                <span className="tabular-nums">
-                  -{formatCentsEUR(quote.discountCents)}
-                </span>
-              </div>
-            ) : null}
-            {Object.entries(quote.vatByRate).map(([rate, cents]) => (
-              <div key={rate} className="flex justify-between text-sm">
-                <span className="text-muted-foreground">TVA {rate} %</span>
-                <span className="tabular-nums">{formatCentsEUR(cents)}</span>
-              </div>
-            ))}
-            <div className="flex justify-between border-t pt-1 font-semibold">
-              <span>Total TTC</span>
-              <span className="tabular-nums">{formatCentsEUR(quote.totalCents)}</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </>
   );
 }
