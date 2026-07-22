@@ -14,7 +14,7 @@ const ITEMS: SettingsNavItem[] = [
   { label: "Entreprise", href: "/parametres/entreprise", enabled: true },
   { label: "Facturation", href: "/parametres/facturation", enabled: false },
   { label: "Emails", href: "/parametres/emails", enabled: false },
-  { label: "Équipe", href: "/parametres/equipe", enabled: false },
+  { label: "Équipe", href: "/parametres/equipe", enabled: true },
   { label: "Mon compte", href: "/parametres/compte", enabled: false },
 ];
 

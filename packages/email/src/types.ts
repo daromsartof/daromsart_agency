@@ -45,6 +45,14 @@ export interface SendResetPasswordEmailParams {
   url: string;
 }
 
+export interface SendInviteEmailParams {
+  to: string;
+  organizationName: string;
+  inviterName: string;
+  role: "admin" | "member";
+  url: string;
+}
+
 export interface SendSignatureConfirmationParams {
   to: string;
   organizationName: string;

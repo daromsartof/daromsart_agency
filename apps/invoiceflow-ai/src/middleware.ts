@@ -6,6 +6,7 @@ const AUTH_PREFIXES = [
   "/connexion",
   "/mot-de-passe-oublie",
   "/reinitialiser",
+  "/invitation",
 ];
 
 /**
