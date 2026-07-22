@@ -100,6 +100,29 @@ describe("createMailer — mode dev (sans apiKey)", () => {
     expect(files).toHaveLength(2);
   });
 
+  it("écrit un aperçu HTML pour l'email d'invitation", async () => {
+    const mailer = createMailer({ from: "InvoiceFlow <no-reply@example.com>", previewDir });
+
+    const result = await mailer.sendInviteEmail({
+      to: "invite@example.com",
+      organizationName: "Daromsart",
+      inviterName: "Alice Admin",
+      role: "member",
+      url: "https://app.example.com/invitation/tok123",
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.mode).toBe("dev-preview");
+
+    const files = await readdir(previewDir);
+    expect(files).toHaveLength(1);
+    const html = await readFile(join(previewDir, files[0]), "utf8");
+    expect(html).toContain("invitation/tok123");
+    expect(html).toContain("Daromsart");
+    expect(html).toContain("Alice Admin");
+  });
+
   it("envoie sans pièce jointe si le PDF dépasse la limite de sécurité (10 Mo)", async () => {
     const mailer = createMailer({ from: "InvoiceFlow <no-reply@example.com>", previewDir });
     const bigBuffer = Buffer.alloc(11 * 1024 * 1024);

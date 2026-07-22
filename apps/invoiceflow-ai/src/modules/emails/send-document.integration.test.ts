@@ -34,6 +34,9 @@ const okMailer: Mailer = {
   async sendReminderEmail() {
     return { ok: true, id: "resend_fake_id", mode: "resend" };
   },
+  async sendInviteEmail() {
+    return { ok: true, id: "resend_fake_id", mode: "resend" };
+  },
 };
 
 const failingMailer: Mailer = {
@@ -47,6 +50,9 @@ const failingMailer: Mailer = {
     return { ok: false, error: "Resend indisponible (mock test)." };
   },
   async sendReminderEmail() {
+    return { ok: false, error: "Resend indisponible (mock test)." };
+  },
+  async sendInviteEmail() {
     return { ok: false, error: "Resend indisponible (mock test)." };
   },
 };

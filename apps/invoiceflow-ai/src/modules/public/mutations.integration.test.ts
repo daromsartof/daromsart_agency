@@ -36,6 +36,9 @@ const okMailer: Mailer = {
   async sendReminderEmail() {
     return { ok: true, id: "resend_fake", mode: "resend" };
   },
+  async sendInviteEmail() {
+    return { ok: true, id: "resend_fake", mode: "resend" };
+  },
 };
 
 // Un pixel PNG transparent valide (signature de test).

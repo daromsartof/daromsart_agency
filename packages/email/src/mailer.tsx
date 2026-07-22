@@ -7,10 +7,12 @@ import { DocumentEmail } from "./templates/document-email";
 import { ReminderEmail } from "./templates/reminder-email";
 import { ResetPasswordEmail } from "./templates/reset-password-email";
 import { SignatureConfirmationEmail } from "./templates/signature-confirmation";
+import { InviteEmail } from "./templates/invite-email";
 import type {
   MailerConfig,
   SendDocumentEmailParams,
   SendEmailResult,
+  SendInviteEmailParams,
   SendReminderEmailParams,
   SendResetPasswordEmailParams,
   SendSignatureConfirmationParams,
@@ -26,6 +28,7 @@ export interface Mailer {
     params: SendSignatureConfirmationParams,
   ): Promise<SendEmailResult>;
   sendReminderEmail(params: SendReminderEmailParams): Promise<SendEmailResult>;
+  sendInviteEmail(params: SendInviteEmailParams): Promise<SendEmailResult>;
 }
 
 function fakeId(prefix: string): string {
@@ -129,6 +132,20 @@ export function createMailer(config: MailerConfig): Mailer {
         attachment: withinLimit
           ? { filename: params.pdfFilename, content: params.pdfBuffer }
           : undefined,
+      });
+    },
+    async sendInviteEmail(params) {
+      return dispatch({
+        to: [params.to],
+        subject: `Invitation à rejoindre ${params.organizationName}`,
+        react: (
+          <InviteEmail
+            organizationName={params.organizationName}
+            inviterName={params.inviterName}
+            role={params.role}
+            url={params.url}
+          />
+        ),
       });
     },
   };
