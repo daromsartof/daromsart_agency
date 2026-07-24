@@ -74,7 +74,8 @@ describe("createMailer — mode dev (sans apiKey)", () => {
       to: "client@example.com",
       organizationName: "Daromsart",
       accentColor: "#185FA5",
-      quoteNumber: "DEV-2026-0001",
+      documentKind: "quote",
+      documentNumber: "DEV-2026-0001",
       clientName: "Client Test",
       signerName: "Jean Dupont",
       forOrganization: false,
@@ -88,7 +89,8 @@ describe("createMailer — mode dev (sans apiKey)", () => {
       to: "admin@example.com",
       organizationName: "Daromsart",
       accentColor: "#185FA5",
-      quoteNumber: "DEV-2026-0001",
+      documentKind: "quote",
+      documentNumber: "DEV-2026-0001",
       clientName: "Client Test",
       signerName: "Jean Dupont",
       forOrganization: true,
@@ -98,6 +100,28 @@ describe("createMailer — mode dev (sans apiKey)", () => {
 
     const files = await readdir(previewDir);
     expect(files).toHaveLength(2);
+  });
+
+  it("accorde correctement le libellé pour une confirmation de signature de facture (story 24)", async () => {
+    const mailer = createMailer({ from: "InvoiceFlow <no-reply@example.com>", previewDir });
+
+    const result = await mailer.sendSignatureConfirmation({
+      to: "client@example.com",
+      organizationName: "Daromsart",
+      accentColor: "#185FA5",
+      documentKind: "invoice",
+      documentNumber: "FAC-2026-0001",
+      clientName: "Client Test",
+      signerName: "Jean Dupont",
+      forOrganization: false,
+      publicUrl: "https://app.example.com/p/factures/abc123",
+    });
+    expect(result.ok).toBe(true);
+
+    const files = await readdir(previewDir);
+    const html = await readFile(join(previewDir, files[0]), "utf8");
+    expect(html).toContain("la facture FAC-2026-0001");
+    expect(html).not.toContain("le devis");
   });
 
   it("écrit un aperçu HTML pour l'email d'invitation", async () => {

@@ -110,11 +110,13 @@ export function createMailer(config: MailerConfig): Mailer {
     async sendSignatureConfirmation(params) {
       const withinLimit =
         !params.pdfBuffer || params.pdfBuffer.byteLength <= MAX_ATTACHMENT_BYTES;
+      const label = params.documentKind === "invoice" ? "Facture" : "Devis";
+      const signedAdjective = params.documentKind === "invoice" ? "signée" : "signé";
       return dispatch({
         to: [params.to],
         subject: params.forOrganization
-          ? `Devis ${params.quoteNumber} signé`
-          : `Signature confirmée — devis ${params.quoteNumber}`,
+          ? `${label} ${params.documentNumber} ${signedAdjective}`
+          : `Signature confirmée — ${label.toLowerCase()} ${params.documentNumber}`,
         react: <SignatureConfirmationEmail {...params} />,
         attachment:
           withinLimit && params.pdfBuffer && params.pdfFilename

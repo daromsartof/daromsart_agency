@@ -9,11 +9,13 @@ import postgres from "postgres";
 import { createFsStorage } from "@daromsart/storage";
 import type { Mailer } from "@daromsart/email";
 import * as schema from "../../db/schema";
-import { clients, emailLogs, organizations, quotes, signatures } from "../../db/schema";
+import { clients, emailLogs, invoices, organizations, quotes, signatures } from "../../db/schema";
 import { createDraft, issueQuote } from "../quotes/mutations";
 import { getQuoteById } from "../quotes/queries";
+import { createDraft as createInvoiceDraft, issueInvoice } from "../invoices/mutations";
+import { getInvoiceById } from "../invoices/queries";
 import { getQuoteByToken } from "./queries";
-import { markViewed, refuseQuote, signQuote } from "./mutations";
+import { markViewed, refuseQuote, signInvoice, signQuote } from "./mutations";
 
 const url = process.env.TEST_DATABASE_URL;
 const client = postgres(url ?? "", { max: 1 });
@@ -70,6 +72,7 @@ beforeAll(async () => {
 afterAll(async () => {
   await db.delete(signatures);
   await db.delete(emailLogs).where(eq(emailLogs.organizationId, orgId));
+  await db.delete(invoices).where(eq(invoices.organizationId, orgId));
   await db.delete(quotes).where(eq(quotes.organizationId, orgId));
   await db.delete(clients).where(eq(clients.organizationId, orgId));
   await db.delete(organizations).where(eq(organizations.id, orgId));
@@ -91,6 +94,19 @@ async function issuedQuote(overrides: { validUntil?: Date } = {}) {
   const quote = await getQuoteById(db, orgId, created.id);
   if (!quote?.shareToken) throw new Error("no share token");
   return quote;
+}
+
+async function issuedInvoice() {
+  const created = await createInvoiceDraft(db, orgId, {
+    clientId,
+    lines: [{ description: "Prestation", quantity: 1, unitPriceCents: 10000, vatRate: 20 }],
+  });
+  if (!created.ok) throw new Error("createDraft (invoice) failed");
+  const issued = await issueInvoice(db, orgId, created.id);
+  if (!issued.ok) throw new Error("issueInvoice failed");
+  const invoice = await getInvoiceById(db, orgId, created.id);
+  if (!invoice?.shareToken) throw new Error("no share token");
+  return invoice;
 }
 
 describe("getQuoteByToken", () => {
@@ -202,6 +218,84 @@ describe("refuseQuote", () => {
     });
 
     const result = await refuseQuote(db, quote.shareToken!, "Trop tard");
+    expect(result.ok).toBe(false);
+  });
+});
+
+describe("signInvoice", () => {
+  it("signe : Signature créée (invoiceId), signedAt/pdfSignedKey/pdfHash posés, statut inchangé, PDF archivé, events + 2 emails", async () => {
+    const invoice = await issuedInvoice();
+
+    const result = await signInvoice(db, storage(), okMailer, invoice.shareToken!, {
+      name: "Jean Dupont",
+      email: "jean.dupont@example.com",
+      pngDataUrl: TINY_PNG_DATA_URL,
+    });
+    expect(result.ok).toBe(true);
+
+    const after = await getInvoiceById(db, orgId, invoice.id);
+    // Signer une facture n'est jamais une transition de statut (orthogonal
+    // au paiement) — le statut d'émission reste inchangé.
+    expect(after?.status).toBe(invoice.status);
+    expect(after?.signedAt).not.toBeNull();
+    expect(after?.pdfSignedKey).toBeTruthy();
+    expect(after?.pdfHash).toBeTruthy();
+
+    const [sig] = await db.select().from(signatures).where(eq(signatures.invoiceId, invoice.id));
+    expect(sig.signerName).toBe("Jean Dupont");
+    expect(sig.imageKey).toBeTruthy();
+    expect(sig.quoteId).toBeNull();
+
+    const archived = await storage().get(after!.pdfSignedKey!);
+    expect(archived).not.toBeNull();
+    const recomputedHash = createHash("sha256").update(archived!).digest("hex");
+    expect(recomputedHash).toBe(after?.pdfHash);
+
+    const logs = await db.select().from(emailLogs).where(eq(emailLogs.documentId, invoice.id));
+    expect(logs.length).toBeGreaterThanOrEqual(2);
+    expect(logs.every((l) => l.status === "sent")).toBe(true);
+  });
+
+  it("refuse une seconde signature (déjà signée)", async () => {
+    const invoice = await issuedInvoice();
+    const first = await signInvoice(db, storage(), okMailer, invoice.shareToken!, {
+      name: "Jean Dupont",
+      pngDataUrl: TINY_PNG_DATA_URL,
+    });
+    expect(first.ok).toBe(true);
+
+    const second = await signInvoice(db, storage(), okMailer, invoice.shareToken!, {
+      name: "Quelqu'un d'autre",
+      pngDataUrl: TINY_PNG_DATA_URL,
+    });
+    expect(second.ok).toBe(false);
+  });
+
+  it("refuse la signature d'une facture annulée", async () => {
+    const invoice = await issuedInvoice();
+    await db.update(invoices).set({ status: "cancelled" }).where(eq(invoices.id, invoice.id));
+
+    const result = await signInvoice(db, storage(), okMailer, invoice.shareToken!, {
+      name: "Jean Dupont",
+      pngDataUrl: TINY_PNG_DATA_URL,
+    });
+    expect(result.ok).toBe(false);
+  });
+
+  it("refuse une signature au format PNG invalide", async () => {
+    const invoice = await issuedInvoice();
+    const result = await signInvoice(db, storage(), okMailer, invoice.shareToken!, {
+      name: "Jean Dupont",
+      pngDataUrl: "data:text/plain;base64,bm90LWEtcG5n",
+    });
+    expect(result.ok).toBe(false);
+  });
+
+  it("renvoie une erreur pour un token inconnu", async () => {
+    const result = await signInvoice(db, storage(), okMailer, "token-inexistant", {
+      name: "Jean Dupont",
+      pngDataUrl: TINY_PNG_DATA_URL,
+    });
     expect(result.ok).toBe(false);
   });
 });

@@ -347,7 +347,7 @@ export function DocumentPdf({ data }: { data: DocumentPdfInput }) {
           </View>
         ) : null}
 
-        {meta.kind === "quote" ? (
+        {meta.kind === "quote" || meta.kind === "invoice" ? (
           <View style={styles.signatureBlock} wrap={false}>
             {data.signature ? (
               <>
@@ -366,7 +366,9 @@ export function DocumentPdf({ data }: { data: DocumentPdfInput }) {
               </>
             ) : (
               <Text style={{ fontSize: 8, color: "#a1a1aa" }}>
-                Bon pour accord — signature du client
+                {meta.kind === "quote"
+                  ? "Bon pour accord — signature du client"
+                  : "Signature du client — bon pour réception et accord"}
               </Text>
             )}
           </View>

@@ -6,6 +6,7 @@ import {
   invoiceLines,
   invoices,
   payments,
+  signatures,
   type InvoiceClientSnapshot,
   type InvoiceOrgSnapshot,
 } from "../../db/schema";
@@ -200,6 +201,10 @@ export interface InvoiceDetail {
   amountPaidCents: number;
   organizationSnapshot: InvoiceOrgSnapshot | null;
   clientSnapshot: InvoiceClientSnapshot | null;
+  /** Preuve d'acceptation orthogonale au statut de paiement (story 24). */
+  signedAt: Date | null;
+  pdfSignedKey: string | null;
+  pdfHash: string | null;
   createdAt: Date;
   updatedAt: Date;
   lines: InvoiceLineRow[];
@@ -240,6 +245,9 @@ export async function getInvoiceById(
       amountPaidCents: invoices.amountPaidCents,
       organizationSnapshot: invoices.organizationSnapshot,
       clientSnapshot: invoices.clientSnapshot,
+      signedAt: invoices.signedAt,
+      pdfSignedKey: invoices.pdfSignedKey,
+      pdfHash: invoices.pdfHash,
       createdAt: invoices.createdAt,
       updatedAt: invoices.updatedAt,
     })
@@ -285,6 +293,9 @@ export async function getInvoiceById(
     amountPaidCents: invoice.amountPaidCents,
     organizationSnapshot: invoice.organizationSnapshot,
     clientSnapshot: invoice.clientSnapshot,
+    signedAt: invoice.signedAt,
+    pdfSignedKey: invoice.pdfSignedKey,
+    pdfHash: invoice.pdfHash,
     createdAt: invoice.createdAt,
     updatedAt: invoice.updatedAt,
     lines: lineRows.map((line) => ({
@@ -430,4 +441,31 @@ export async function getInvoiceDashboardStats(
     .where(and(eq(invoices.organizationId, organizationId), gte(payments.paidAt, monthStart)));
 
   return { encoursCents, retardCents, encaisseMoisCents };
+}
+
+export interface InvoiceSignatureRow {
+  name: string;
+  email: string | null;
+  imageKey: string;
+  signedAt: Date;
+}
+
+/** Fiche signature (card détail interne, story 24, miroir de `getQuoteSignature`) — org-scopée. */
+export async function getInvoiceSignature(
+  db: AppDb,
+  organizationId: string,
+  invoiceId: string,
+): Promise<InvoiceSignatureRow | null> {
+  const [row] = await db
+    .select({
+      name: signatures.signerName,
+      email: signatures.signerEmail,
+      imageKey: signatures.imageKey,
+      signedAt: signatures.signedAt,
+    })
+    .from(signatures)
+    .innerJoin(invoices, eq(invoices.id, signatures.invoiceId))
+    .where(and(eq(signatures.invoiceId, invoiceId), eq(invoices.organizationId, organizationId)))
+    .limit(1);
+  return row ?? null;
 }

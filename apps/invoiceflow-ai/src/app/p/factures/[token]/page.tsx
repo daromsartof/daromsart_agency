@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { getInvoiceByToken } from "@/modules/public/queries";
 import { markInvoiceViewed } from "@/modules/public/mutations";
 import { CopyButton } from "@/modules/public/components/copy-button";
+import { SignDialog } from "@/modules/public/components/sign-dialog";
 
 export const metadata = { title: "Votre facture" };
 // Le "reste dû" (et donc l'amount encodé dans le QR EPC) doit toujours
@@ -41,6 +42,7 @@ export default async function PublicInvoicePage({
     amountPaidCents: invoice.amountPaidCents,
   });
   const pdfUrl = `/api/p/factures/${params.token}/pdf`;
+  const signable = invoice.status !== "draft" && invoice.status !== "cancelled" && !invoice.signedAt;
 
   const showPaymentBlock = !paid && invoice.status !== "cancelled" && Boolean(invoice.iban);
   let qrDataUrl: string | null = null;
@@ -86,17 +88,20 @@ export default async function PublicInvoicePage({
             </div>
           ) : null}
 
-          {paid ? (
-            <Badge variant="success">Réglée</Badge>
-          ) : invoice.status === "cancelled" ? (
-            <Badge variant="destructive">Annulée</Badge>
-          ) : overdue ? (
-            <Badge variant="warning">En retard</Badge>
-          ) : invoice.status === "viewed" ? (
-            <Badge variant="default">Consultée</Badge>
-          ) : (
-            <Badge variant="info">En attente de règlement</Badge>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {paid ? (
+              <Badge variant="success">Réglée</Badge>
+            ) : invoice.status === "cancelled" ? (
+              <Badge variant="destructive">Annulée</Badge>
+            ) : overdue ? (
+              <Badge variant="warning">En retard</Badge>
+            ) : invoice.status === "viewed" ? (
+              <Badge variant="default">Consultée</Badge>
+            ) : (
+              <Badge variant="info">En attente de règlement</Badge>
+            )}
+            {invoice.signedAt ? <Badge variant="success">Signée</Badge> : null}
+          </div>
         </CardContent>
       </Card>
 
@@ -151,6 +156,12 @@ export default async function PublicInvoicePage({
             ) : null}
           </CardContent>
         </Card>
+      ) : null}
+
+      {signable ? (
+        <div className="sticky bottom-4 flex justify-center rounded-lg border bg-background p-4 shadow-lg">
+          <SignDialog token={params.token} kind="invoice" defaultEmail={invoice.clientEmail} />
+        </div>
       ) : null}
     </div>
   );

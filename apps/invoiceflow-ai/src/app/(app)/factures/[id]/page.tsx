@@ -21,13 +21,14 @@ import { ArrowLeft } from "lucide-react";
 import { isOverdue, renderEmailVariables } from "@daromsart/core";
 import { db } from "@/db";
 import { env } from "@/lib/env";
+import { storage } from "@/lib/storage";
 import { getCurrentOrganizationId, getMembershipRole, requireSession } from "@/modules/auth/session";
 import { listDocumentEvents } from "@/modules/documents/events";
 import { EventTimeline } from "@/modules/documents/components/event-timeline";
 import { InvoiceDetailActions } from "@/modules/invoices/components/invoice-detail-actions";
 import { CreditNoteDetailActions } from "@/modules/invoices/components/credit-note-detail-actions";
 import { PaymentCard } from "@/modules/invoices/components/payment-card";
-import { getInvoiceById } from "@/modules/invoices/queries";
+import { getInvoiceById, getInvoiceSignature } from "@/modules/invoices/queries";
 import { listPaymentsForInvoice } from "@/modules/invoices/payments";
 import { listCreditNotesForParent } from "@/modules/invoices/credit-notes";
 import { getQuoteById } from "@/modules/quotes/queries";
@@ -271,6 +272,11 @@ export default async function FactureDetailPage({
   const emailLogs = await listEmailLogsForDocument(db, organizationId, "invoice", invoice.id);
   const lastEmail = emailLogs[0] ?? null;
 
+  const signature = invoice.signedAt
+    ? await getInvoiceSignature(db, organizationId, invoice.id)
+    : null;
+  const signatureImageUrl = signature ? await storage.getSignedUrl(signature.imageKey) : null;
+
   return (
     <>
       <PageHeader
@@ -400,6 +406,31 @@ export default async function FactureDetailPage({
             isAdmin={role === "admin"}
             canRecord={canRecordPayment}
           />
+
+          {signature ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Signature</CardTitle>
+              </CardHeader>
+              <CardContent className="flex items-center gap-4">
+                {signatureImageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- data/signée, pas un asset Next Image.
+                  <img
+                    src={signatureImageUrl}
+                    alt={`Signature de ${signature.name}`}
+                    className="h-16 w-40 rounded border bg-white object-contain"
+                  />
+                ) : null}
+                <div className="text-sm">
+                  <p className="font-medium">{signature.name}</p>
+                  {signature.email ? (
+                    <p className="text-muted-foreground">{signature.email}</p>
+                  ) : null}
+                  <p className="text-muted-foreground">{formatDateLong(signature.signedAt)}</p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
         </div>
 
         <div className="space-y-4">

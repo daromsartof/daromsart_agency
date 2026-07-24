@@ -57,7 +57,8 @@ export interface SendSignatureConfirmationParams {
   to: string;
   organizationName: string;
   accentColor: string;
-  quoteNumber: string;
+  documentKind: "quote" | "invoice";
+  documentNumber: string;
   clientName: string;
   signerName: string;
   forOrganization: boolean;

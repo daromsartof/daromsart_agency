@@ -161,6 +161,12 @@ export interface InvoicePdfFile {
   filename: string;
 }
 
+/**
+ * PDF servi pour une facture : l'archive signée une fois `pdfSignedKey` posé
+ * (jamais reconstruite, story 24 — mirror de `resolveQuotePdfBuffer`),
+ * sinon rendu à la volée. `pdfSignedKey` n'est jamais posé pour un avoir
+ * (`kind === "credit_note"`, jamais signable).
+ */
 export async function resolveInvoicePdfBuffer(
   db: AppDb,
   storage: Storage,
@@ -169,10 +175,17 @@ export async function resolveInvoicePdfBuffer(
 ): Promise<InvoicePdfFile | null> {
   const invoice = await getInvoiceById(db, organizationId, invoiceId);
   if (!invoice) return null;
+  const prefix = invoice.kind === "credit_note" ? "avoir" : "facture";
+
+  if (invoice.pdfSignedKey) {
+    const archived = await storage.get(invoice.pdfSignedKey);
+    if (archived) {
+      return { buffer: archived, filename: `${prefix}-signee-${invoice.number ?? invoice.id}.pdf` };
+    }
+  }
 
   const input = await buildInvoicePdfInput(db, storage, organizationId, invoiceId);
   if (!input) return null;
   const buffer = await renderDocumentPdf(input);
-  const prefix = invoice.kind === "credit_note" ? "avoir" : "facture";
   return { buffer, filename: `${prefix}-${invoice.number ?? "brouillon"}.pdf` };
 }
