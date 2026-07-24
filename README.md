@@ -15,13 +15,20 @@ packages/
   config/             # @daromsart/config — tsconfig / eslint / prettier partagés
   theme/              # @daromsart/theme — tokens + preset Tailwind partagés
   ui/                 # @daromsart/ui — design system ShadCN
+services/
+  python-worker/      # Worker Python (FastAPI) — modèle de référence, voir plus bas
 ```
+
+`apps/` = produits Next.js (pnpm/Turborepo). `services/` = workers/services
+backend non-Node (Python pour l'instant) ; ils ne font pas partie du workspace
+pnpm et se gèrent avec leur propre outillage (voir « Workers Python »).
 
 ## Prérequis
 
 - Node ≥ 20
 - pnpm ≥ 9
-- Docker (Postgres de dev)
+- [uv](https://docs.astral.sh/uv/) (workers Python, voir `services/`)
+- Docker (Postgres de dev, et pour lancer n'importe quelle app/worker en conteneur)
 
 ## Démarrage
 
@@ -142,3 +149,66 @@ Le contexte de build est toujours la **racine du monorepo** :
 ```bash
 docker build -f apps/<app>/Dockerfile -t daromsart/<app>:latest .
 ```
+
+## Workers Python (REST API)
+
+`services/` héberge les workers/services backend qui ne sont pas des apps
+Next.js — typiquement du Python exposant une API REST (traitement lourd,
+librairies ML/PDF/OCR, scripts métier, etc.). Ils sont hors du workspace
+pnpm (pas de `package.json`) et se gèrent avec [uv](https://docs.astral.sh/uv/),
+l'équivalent Python de pnpm : installs rapides, lockfile (`uv.lock`) reproductible.
+
+`services/python-worker/` est le **modèle de référence** : FastAPI + uvicorn,
+authentification par clé API (header `X-API-Key`, variable `WORKER_API_KEY`),
+un endpoint `/health` public (sondes/healthcheck) et un endpoint d'exemple
+`POST /v1/echo` protégé, à remplacer par la vraie logique métier.
+
+**Dev local (sans Docker)** — le plus rapide pour itérer :
+
+```bash
+cd services/python-worker
+uv sync                    # installe les dépendances (voir pyproject.toml)
+uv run uvicorn app.main:app --reload --port 8000
+# ou depuis la racine : pnpm start:python-worker
+
+uv run pytest               # tests            (ou : pnpm test:python-worker)
+uv run ruff check .         # lint             (ou : pnpm lint:python-worker)
+```
+
+Documentation interactive générée automatiquement : `http://localhost:8000/docs`.
+
+**Appel depuis l'intérieur ou l'extérieur de Docker** :
+
+| Depuis…                                    | URL                            |
+| ------------------------------------------- | ------------------------------- |
+| un autre conteneur du même réseau compose   | `http://python-worker:8000`     |
+| l'hôte / une autre app en dehors de Docker  | `http://localhost:8000`         |
+
+Le port `8000` est publié dans les deux fichiers compose (`docker-compose.yml`
+sous le profil `--profile workers`, `docker-compose.prod.yml` toujours actif) —
+c'est la même image, appelable indifféremment par son nom de service en interne
+ou par le port publié en externe. Sans authentification par défaut en dev
+(`WORKER_API_KEY` vide) ; toujours la renseigner en production.
+
+```bash
+# Lancer le worker conteneurisé en dev (optionnel, sinon `uv run` suffit)
+docker compose --profile workers up -d --build
+
+curl http://localhost:8000/health
+curl -X POST http://localhost:8000/v1/echo \
+  -H "Content-Type: application/json" -H "X-API-Key: $WORKER_API_KEY" \
+  -d '{"message": "bonjour"}'
+```
+
+### Créer un nouveau worker Python
+
+1. dupliquer `services/python-worker/` vers `services/<nouveau-worker>/` ;
+2. renommer `name` dans `pyproject.toml`, adapter `app/main.py` et les routers ;
+3. depuis `services/<nouveau-worker>/` : `rm uv.lock && uv sync` (régénère le
+   lockfile pour ce worker) ;
+4. le `Dockerfile` copié n'a besoin d'aucune modification (il lit son propre
+   chemin via `PROJECT_PATH`, déjà correct après la copie) ;
+5. ajouter un service dans `docker-compose.yml` (profil `workers`) et
+   `docker-compose.prod.yml`, avec un port hôte différent de ceux déjà pris ;
+6. si d'autres apps du monorepo doivent l'appeler, leur passer son URL via une
+   variable d'env (interne : `http://<nom-du-service>:<port>`).

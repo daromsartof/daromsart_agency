@@ -57,6 +57,23 @@ services:
       # doit survivre à un `--build`/recreate, pas seulement à un restart.
       - invoiceflow_storage:/app/.storage
 
+  # Worker Python de référence (voir services/python-worker). Appelable :
+  #   - depuis un autre conteneur du réseau compose : http://python-worker:8000
+  #   - depuis l'extérieur (hôte/Internet)          : http://<hôte>:8000
+  # Chaque nouveau worker Python = un service supplémentaire du même type.
+  python-worker:
+    build:
+      context: .
+      dockerfile: services/python-worker/Dockerfile
+    image: daromsart/python-worker:latest
+    restart: unless-stopped
+    environment:
+      # Toujours renseigner en prod — sans elle, l'API accepte les appels
+      # sans authentification (voir services/python-worker/app/security.py).
+      WORKER_API_KEY: ${WORKER_API_KEY:-change-me}
+    ports:
+      - "8000:8000"
+
 volumes:
   pgdata:
     name: daromsart_prod_pgdata

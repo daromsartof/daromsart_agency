@@ -2,8 +2,9 @@
 # Compose DEV — infrastructure partagée uniquement (pas les apps).
 # Les applications tournent en local via `pnpm dev` et se connectent ici.
 #
-#   docker compose up -d                 # Postgres
-#   docker compose --profile tools up -d # + Adminer (UI DB sur :8080)
+#   docker compose up -d                   # Postgres
+#   docker compose --profile tools up -d   # + Adminer (UI DB sur :8080)
+#   docker compose --profile workers up -d # + workers Python (voir services/)
 #
 # La construction/lancement des images d'app en conteneur → docker-compose.prod.yml
 # ─────────────────────────────────────────────────────────────────────────
@@ -41,6 +42,21 @@ services:
       ADMINER_DEFAULT_SERVER: postgres
     depends_on:
       - postgres
+
+  # Worker Python de référence (voir services/python-worker) — optionnel en
+  # dev : la plupart du temps on le lance directement avec `uv run` (voir
+  # README), ce profil sert surtout à tester l'image conteneurisée.
+  python-worker:
+    build:
+      context: .
+      dockerfile: services/python-worker/Dockerfile
+    container_name: daromsart-python-worker
+    restart: unless-stopped
+    profiles: ["workers"]
+    environment:
+      WORKER_API_KEY: ${WORKER_API_KEY:-}
+    ports:
+      - "8000:8000"
 
 volumes:
   pgdata:
