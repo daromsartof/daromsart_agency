@@ -2,43 +2,35 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Badge, cn } from "@daromsart/ui";
+import { cn } from "@daromsart/ui";
 
 interface SettingsNavItem {
   label: string;
   href: string;
-  enabled: boolean;
+  adminOnly: boolean;
 }
 
 const ITEMS: SettingsNavItem[] = [
-  { label: "Entreprise", href: "/parametres/entreprise", enabled: true },
-  { label: "Facturation", href: "/parametres/facturation", enabled: false },
-  { label: "Emails", href: "/parametres/emails", enabled: false },
-  { label: "Équipe", href: "/parametres/equipe", enabled: true },
-  { label: "Mon compte", href: "/parametres/compte", enabled: false },
+  { label: "Entreprise", href: "/parametres/entreprise", adminOnly: true },
+  { label: "Facturation", href: "/parametres/facturation", adminOnly: true },
+  { label: "Emails", href: "/parametres/emails", adminOnly: true },
+  { label: "Équipe", href: "/parametres/equipe", adminOnly: true },
+  { label: "Mon compte", href: "/parametres/compte", adminOnly: false },
 ];
 
-export function SettingsNav() {
+export interface SettingsNavProps {
+  /** Un membre (non-admin) ne voit que "Mon compte" (story 22). */
+  isAdmin: boolean;
+}
+
+export function SettingsNav({ isAdmin }: SettingsNavProps) {
   const pathname = usePathname();
+  const items = ITEMS.filter((item) => isAdmin || !item.adminOnly);
 
   return (
     <nav className="flex flex-col gap-1" aria-label="Paramètres">
-      {ITEMS.map((item) => {
+      {items.map((item) => {
         const active = pathname.startsWith(item.href);
-        if (!item.enabled) {
-          return (
-            <span
-              key={item.href}
-              className="flex items-center justify-between rounded-md px-3 py-2 text-sm text-muted-foreground/60"
-              aria-disabled="true"
-            >
-              {item.label}
-              <Badge variant="outline" className="text-[10px]">
-                Bientôt
-              </Badge>
-            </span>
-          );
-        }
         return (
           <Link
             key={item.href}

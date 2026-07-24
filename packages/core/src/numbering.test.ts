@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { formatDocumentNumber, isValidDocumentNumberFormat } from "./numbering";
+import {
+  formatDocumentNumber,
+  isValidDocumentNumberFormat,
+  previewNextNumber,
+  validateNumberFormat,
+} from "./numbering";
 
 describe("formatDocumentNumber", () => {
   it("résout {YYYY} et {seq:n}", () => {
@@ -55,5 +60,56 @@ describe("isValidDocumentNumberFormat", () => {
 
   it("rejette un token malformé", () => {
     expect(isValidDocumentNumberFormat("FAC-{seq:}-{YYYY}")).toBe(false);
+  });
+});
+
+describe("validateNumberFormat (story 22)", () => {
+  it("accepte un format standard", () => {
+    expect(validateNumberFormat("FAC-{YYYY}-{seq:4}")).toEqual({ valid: true });
+  });
+
+  it("accepte {seq} sans padding", () => {
+    expect(validateNumberFormat("FAC-{YYYY}-{seq}")).toEqual({ valid: true });
+  });
+
+  it("rejette une chaîne vide", () => {
+    expect(validateNumberFormat("   ").valid).toBe(false);
+  });
+
+  it("rejette un format sans {seq} (collision garantie)", () => {
+    const result = validateNumberFormat("FACTURE-FIXE");
+    expect(result.valid).toBe(false);
+    if (!result.valid) expect(result.error).toMatch(/seq/);
+  });
+
+  it("rejette plusieurs occurrences de {seq}", () => {
+    expect(validateNumberFormat("FAC-{seq:4}-{seq:4}").valid).toBe(false);
+  });
+
+  it("rejette un padding hors 2..6", () => {
+    expect(validateNumberFormat("FAC-{seq:1}").valid).toBe(false);
+    expect(validateNumberFormat("FAC-{seq:7}").valid).toBe(false);
+  });
+
+  it("accepte les bornes 2 et 6", () => {
+    expect(validateNumberFormat("FAC-{seq:2}").valid).toBe(true);
+    expect(validateNumberFormat("FAC-{seq:6}").valid).toBe(true);
+  });
+
+  it("rejette un token inconnu", () => {
+    expect(validateNumberFormat("FAC-{foo}-{seq:4}").valid).toBe(false);
+  });
+
+  it("rejette un format de plus de 40 caractères", () => {
+    const long = `${"X".repeat(35)}-{seq:4}`;
+    expect(long.length).toBeGreaterThan(40);
+    expect(validateNumberFormat(long).valid).toBe(false);
+  });
+});
+
+describe("previewNextNumber (story 22)", () => {
+  it("résout le format avec l'année civile courante", () => {
+    const year = new Date().getFullYear();
+    expect(previewNextNumber("FAC-{YYYY}-{seq:4}", 8)).toBe(`FAC-${year}-0008`);
   });
 });

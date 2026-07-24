@@ -1,4 +1,5 @@
 import { storage } from "@/lib/storage";
+import { requireAdmin } from "@/modules/auth/session";
 import { getOrg } from "@/modules/organization/queries";
 import { AddressCard } from "./address-card";
 import { BankCard } from "./bank-card";
@@ -9,6 +10,7 @@ import { LogoCard } from "./logo-card";
 export const metadata = { title: "Entreprise" };
 
 export default async function EntreprisePage() {
+  await requireAdmin();
   const org = await getOrg();
   const logoUrl = org.logoKey ? await storage.getSignedUrl(org.logoKey) : null;
 
