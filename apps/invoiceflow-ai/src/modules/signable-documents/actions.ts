@@ -8,7 +8,7 @@ import {
   signSignableDocument,
   uploadSignableDocument,
   type MutationResult,
-  type SignatureAnchor,
+  type SignSignableDocumentInput,
 } from "./mutations";
 
 async function requireOrganizationId(): Promise<string> {
@@ -38,7 +38,7 @@ export async function uploadSignableDocumentAction(
 
 export async function signSignableDocumentAction(
   id: string,
-  input: { signerName: string; pngDataUrl: string; page: number; anchor: SignatureAnchor },
+  input: SignSignableDocumentInput,
 ): Promise<MutationResult> {
   const organizationId = await requireOrganizationId();
   const result = await signSignableDocument(db, storage, organizationId, id, input);

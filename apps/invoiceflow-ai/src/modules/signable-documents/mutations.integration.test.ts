@@ -223,4 +223,15 @@ describe("signSignableDocument", () => {
     });
     expect(result.ok).toBe(false);
   });
+
+  it("accepte un placement libre x/y/w/h", async () => {
+    const id = await uploadedDoc();
+    const result = await signSignableDocument(db, storage(), orgId, id, {
+      signerName: "Jean Dupont",
+      pngDataUrl: TINY_PNG_DATA_URL,
+      page: 1,
+      placement: { x: 80, y: 120, width: 200, height: 80 },
+    });
+    expect(result.ok).toBe(true);
+  });
 });

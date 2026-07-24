@@ -21,12 +21,16 @@ import {
 } from "../quotes/mutations";
 import {
   getActiviteRecente,
+  getAgingBuckets,
   getCaParMois,
+  getCaVsEncaisseParMois,
   getCashflowStats,
+  getConversionStats,
   getDerniersDevis,
   getDevisEnCoursStats,
   getEncoursStats,
   getFacturesEnRetard,
+  getTopClients,
   hasAnyDocument,
 } from "./queries";
 
@@ -199,6 +203,8 @@ describe("getCashflowStats", () => {
     const partialPayment = Math.floor(ttc(300_00) / 2);
     const fullPayment = ttc(150_00);
     expect(stats.encaisseAnneeCents).toBe(partialPayment + fullPayment);
+    // Tous les paiements du jeu sont dans le mois courant.
+    expect(stats.encaisseMoisCents).toBe(partialPayment + fullPayment);
   });
 });
 
@@ -220,6 +226,60 @@ describe("getCaParMois", () => {
     const invoicesTotal = ttc(100_00) + ttc(200_00) + ttc(300_00) + ttc(150_00) + ttc(400_00);
     const creditNoteTotal = -ttc(50_00);
     expect(currentMonth.totalCents).toBe(invoicesTotal + creditNoteTotal);
+  });
+});
+
+describe("getCaVsEncaisseParMois", () => {
+  it("retourne 12 points avec emis = caParMois et encaisse = paiements du mois", async () => {
+    const points = await getCaVsEncaisseParMois(db, orgId, 12);
+    expect(points).toHaveLength(12);
+    const current = points[points.length - 1];
+    const invoicesTotal = ttc(100_00) + ttc(200_00) + ttc(300_00) + ttc(150_00) + ttc(400_00);
+    const creditNoteTotal = -ttc(50_00);
+    expect(current.emisCents).toBe(invoicesTotal + creditNoteTotal);
+    const partialPayment = Math.floor(ttc(300_00) / 2);
+    const fullPayment = ttc(150_00);
+    expect(current.encaisseCents).toBe(partialPayment + fullPayment);
+  });
+});
+
+describe("getAgingBuckets", () => {
+  it("ventile le reste dû échu (2 factures à ~10 j → bucket 0-30)", async () => {
+    const buckets = await getAgingBuckets(db, orgId);
+    expect(buckets).toHaveLength(4);
+    const partialTotal = ttc(300_00);
+    const partialRemaining = partialTotal - Math.floor(partialTotal / 2);
+    const expected = ttc(200_00) + partialRemaining;
+    const bucket030 = buckets.find((b) => b.bucket === "0-30")!;
+    expect(bucket030.totalCents).toBe(expected);
+    expect(bucket030.count).toBe(2);
+    expect(buckets.filter((b) => b.bucket !== "0-30").every((b) => b.totalCents === 0)).toBe(true);
+  });
+});
+
+describe("getConversionStats", () => {
+  it("taux = signés / (sent+viewed+signed+…), panier moyen et DSO renseignés", async () => {
+    const stats = await getConversionStats(db, orgId);
+    // Pipeline : sent + viewed + signed = 3 ; signedOrInvoiced = 1 → 33 %.
+    expect(stats.pipelineCount).toBe(3);
+    expect(stats.signedOrInvoicedCount).toBe(1);
+    expect(stats.conversionPercent).toBe(33);
+    expect(stats.panierMoyenCents).not.toBeNull();
+    expect(stats.dsoJours).not.toBeNull();
+  });
+});
+
+describe("getTopClients", () => {
+  it("agrège le CA du client unique du jeu de données", async () => {
+    const rows = await getTopClients(db, orgId, 5);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].clientId).toBe(clientId);
+    expect(rows[0].clientName).toBe("Client Dashboard Test");
+    // CA = factures non draft/cancelled (100+200+300+150+400).
+    const ca =
+      ttc(100_00) + ttc(200_00) + ttc(300_00) + ttc(150_00) + ttc(400_00);
+    expect(rows[0].caCents).toBe(ca);
+    expect(rows[0].resteDuCents).toBeGreaterThan(0);
   });
 });
 

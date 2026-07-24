@@ -53,7 +53,6 @@ export interface AppShellProps {
   sections: NavSection[];
   activeHref?: string;
   logo?: React.ReactNode;
-  title?: React.ReactNode;
   user?: { name?: string | null; email?: string | null };
   /** Contenu du menu utilisateur (dropdown) rendu dans la topbar. */
   userMenu?: React.ReactNode;
@@ -120,7 +119,6 @@ function AppShell({
   sections,
   activeHref,
   logo,
-  title,
   user,
   userMenu,
   topbarActions,
@@ -179,9 +177,7 @@ function AppShell({
             </SheetContent>
           </Sheet>
 
-          <div className="min-w-0 flex-1 truncate text-base font-semibold">
-            {title}
-          </div>
+          <div className="min-w-0 flex-1" />
 
           <div className="flex shrink-0 items-center gap-2">
             {topbarActions}

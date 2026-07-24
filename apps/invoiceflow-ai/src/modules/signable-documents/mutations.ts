@@ -5,6 +5,15 @@ import type { Storage } from "@daromsart/storage";
 import type { AppDb } from "../../db/types";
 import { signableDocuments } from "../../db/schema";
 import { parseSignaturePng } from "../documents/signature-validation";
+import {
+  STAMP_HEIGHT,
+  STAMP_WIDTH,
+  type SignatureAnchor,
+  type SignaturePlacement,
+} from "./signature-placement";
+
+export type { SignatureAnchor, SignaturePlacement } from "./signature-placement";
+export { STAMP_HEIGHT, STAMP_WIDTH } from "./signature-placement";
 
 export const MAX_UPLOAD_BYTES = 15 * 1024 * 1024;
 
@@ -66,25 +75,18 @@ export async function uploadSignableDocument(
   return { ok: true, id };
 }
 
-export type SignatureAnchor =
-  | "bas-gauche"
-  | "bas-centre"
-  | "bas-droite"
-  | "haut-gauche"
-  | "centre"
-  | "haut-droite";
-
 export interface SignSignableDocumentInput {
   signerName: string;
   /** Data URL PNG du tracé (canvas maison, cf. modules/public/components). */
   pngDataUrl: string;
   /** 1-indexé (page 1 = première page), comme affiché à l'utilisateur. */
   page: number;
-  anchor: SignatureAnchor;
+  /** Ancre prédéfinie — utilisée si `placement` est absent (tests / compat). */
+  anchor?: SignatureAnchor;
+  /** Placement libre (glisser/redimensionner sur le PDF). Prioritaire sur `anchor`. */
+  placement?: SignaturePlacement;
 }
 
-const STAMP_WIDTH = 160;
-const STAMP_HEIGHT = 60;
 const MARGIN = 24;
 
 /**
@@ -116,6 +118,32 @@ function anchorPosition(
     case "haut-droite":
       return { x: right, y: top };
   }
+}
+
+function resolveStampRect(
+  input: SignSignableDocumentInput,
+  pageWidth: number,
+  pageHeight: number,
+): SignaturePlacement | { error: string } {
+  if (input.placement) {
+    const { x, y, width, height } = input.placement;
+    if (![x, y, width, height].every((n) => Number.isFinite(n)) || width <= 0 || height <= 0) {
+      return { error: "Placement de signature invalide." };
+    }
+    const w = Math.min(width, pageWidth);
+    const h = Math.min(height, pageHeight);
+    return {
+      x: Math.max(0, Math.min(x, pageWidth - w)),
+      y: Math.max(0, Math.min(y, pageHeight - h)),
+      width: w,
+      height: h,
+    };
+  }
+  if (input.anchor) {
+    const { x, y } = anchorPosition(input.anchor, pageWidth, pageHeight);
+    return { x, y, width: STAMP_WIDTH, height: STAMP_HEIGHT };
+  }
+  return { error: "Position de signature requise." };
 }
 
 /**
@@ -171,8 +199,16 @@ export async function signSignableDocument(
   const pngImage = await pdf.embedPng(parsedPng.buffer);
   const page = pdf.getPage(input.page - 1);
   const { width, height } = page.getSize();
-  const { x, y } = anchorPosition(input.anchor, width, height);
-  page.drawImage(pngImage, { x, y, width: STAMP_WIDTH, height: STAMP_HEIGHT });
+  const rect = resolveStampRect(input, width, height);
+  if ("error" in rect) {
+    return { ok: false, errors: { placement: rect.error } };
+  }
+  page.drawImage(pngImage, {
+    x: rect.x,
+    y: rect.y,
+    width: rect.width,
+    height: rect.height,
+  });
 
   const signedBytes = await pdf.save();
   const signedKey = `signable/${id}/signed.pdf`;

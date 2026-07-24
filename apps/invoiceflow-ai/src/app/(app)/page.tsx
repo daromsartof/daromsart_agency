@@ -2,7 +2,6 @@ import Link from "next/link";
 import {
   AlertTriangle,
   Clock,
-  FileText,
   LayoutDashboard,
   Wallet,
 } from "lucide-react";
@@ -15,28 +14,29 @@ import {
   EmptyState,
   PageHeader,
   StatCard,
-  StatusBadge,
   formatCentsEUR,
 } from "@daromsart/ui";
-import type { QuoteStatus } from "@daromsart/core";
 import { db } from "@/db";
 import { getCurrentOrganizationId, requireSession } from "@/modules/auth/session";
-import { EventTimeline } from "@/modules/documents/components/event-timeline";
-import { CaChart } from "@/modules/dashboard/components/ca-chart";
+import { AgingChart } from "@/modules/dashboard/components/aging-chart";
+import { OverdueInvoicesList } from "@/modules/dashboard/components/overdue-invoices-list";
+import { RecentActivityList } from "@/modules/dashboard/components/recent-activity-list";
+import { RecentQuotesList } from "@/modules/dashboard/components/recent-quotes-list";
+import { SalesChartCard } from "@/modules/dashboard/components/sales-chart-card";
+import { SecondaryKpis } from "@/modules/dashboard/components/secondary-kpis";
+import { TopClientsList } from "@/modules/dashboard/components/top-clients-list";
 import {
   getActiviteRecente,
-  getCaParMois,
+  getAgingBuckets,
+  getCaVsEncaisseParMois,
   getCashflowStats,
+  getConversionStats,
   getDerniersDevis,
-  getDevisEnCoursStats,
   getEncoursStats,
   getFacturesEnRetard,
+  getTopClients,
   hasAnyDocument,
 } from "@/modules/dashboard/queries";
-
-function formatDateShort(date: Date): string {
-  return date.toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
-}
 
 export default async function DashboardPage() {
   const session = await requireSession();
@@ -46,7 +46,7 @@ export default async function DashboardPage() {
       <>
         <PageHeader
           title="Dashboard"
-          description="Vue d'ensemble de votre activité de facturation."
+          description="Vue d'ensemble de votre activité commerciale et de trésorerie."
         />
         <EmptyState
           icon={LayoutDashboard}
@@ -63,7 +63,7 @@ export default async function DashboardPage() {
       <>
         <PageHeader
           title="Dashboard"
-          description="Vue d'ensemble de votre activité de facturation."
+          description="Vue d'ensemble de votre activité commerciale et de trésorerie."
         />
         <EmptyState
           icon={LayoutDashboard}
@@ -79,16 +79,27 @@ export default async function DashboardPage() {
     );
   }
 
-  const [cashflow, encours, devisEnCours, caParMois, facturesEnRetard, derniersDevis, activite] =
-    await Promise.all([
-      getCashflowStats(db, organizationId),
-      getEncoursStats(db, organizationId),
-      getDevisEnCoursStats(db, organizationId),
-      getCaParMois(db, organizationId),
-      getFacturesEnRetard(db, organizationId),
-      getDerniersDevis(db, organizationId),
-      getActiviteRecente(db, organizationId),
-    ]);
+  const [
+    cashflow,
+    encours,
+    caVsEncaisse,
+    aging,
+    conversion,
+    topClients,
+    facturesEnRetard,
+    derniersDevis,
+    activite,
+  ] = await Promise.all([
+    getCashflowStats(db, organizationId),
+    getEncoursStats(db, organizationId),
+    getCaVsEncaisseParMois(db, organizationId, 12),
+    getAgingBuckets(db, organizationId),
+    getConversionStats(db, organizationId),
+    getTopClients(db, organizationId, 5),
+    getFacturesEnRetard(db, organizationId),
+    getDerniersDevis(db, organizationId),
+    getActiviteRecente(db, organizationId),
+  ]);
 
   const activiteEvents = activite.map((event) => ({
     id: event.id,
@@ -100,15 +111,31 @@ export default async function DashboardPage() {
     href: event.href,
   }));
 
+  const overdueTotalCents = facturesEnRetard.reduce((sum, inv) => sum + inv.remainingCents, 0);
+
   return (
     <>
       <PageHeader
         title="Dashboard"
-        description="Vue d'ensemble de votre activité de facturation."
+        description="Visibilité de vente et trésorerie en un coup d'œil."
       />
 
       <div className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            label="Encaissé (mois)"
+            value={formatCentsEUR(cashflow.encaisseMoisCents)}
+            icon={Wallet}
+            tone="success"
+            trend={
+              cashflow.variationMoisPercent !== null
+                ? {
+                    label: `${cashflow.variationMoisPercent >= 0 ? "+" : ""}${cashflow.variationMoisPercent} % vs mois précédent`,
+                    positive: cashflow.variationMoisPercent >= 0,
+                  }
+                : undefined
+            }
+          />
           <StatCard
             label="Encaissé (année)"
             value={formatCentsEUR(cashflow.encaisseAnneeCents)}
@@ -143,102 +170,88 @@ export default async function DashboardPage() {
                 : undefined
             }
           />
-          <StatCard
-            label="Devis en cours"
-            value={formatCentsEUR(devisEnCours.totalCents)}
-            icon={FileText}
-            tone="default"
-            trend={
-              devisEnCours.count > 0
-                ? { label: `${devisEnCours.count} devis`, positive: true }
-                : undefined
-            }
-          />
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Chiffre d'affaires (12 derniers mois)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <CaChart data={caParMois} />
-          </CardContent>
-        </Card>
+        <div className="grid gap-4 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <SalesChartCard data={caVsEncaisse} />
+          </div>
+          <SecondaryKpis stats={conversion} />
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <CardTitle>Ancienneté des retards</CardTitle>
+              <Button asChild variant="ghost" size="sm" className="h-8 text-xs">
+                <Link href="/factures">Voir tout</Link>
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <AgingChart buckets={aging} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <CardTitle>Top clients</CardTitle>
+              <Button asChild variant="ghost" size="sm" className="h-8 text-xs">
+                <Link href="/clients">Voir tout</Link>
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <TopClientsList clients={topClients} />
+            </CardContent>
+          </Card>
+        </div>
 
         <div className="grid gap-4 lg:grid-cols-3">
-          <Card>
-            <CardHeader>
-              <CardTitle>Factures en retard</CardTitle>
+          <Card className="overflow-hidden">
+            <CardHeader className="flex flex-row items-start justify-between space-y-0 border-b bg-warning/5 pb-4">
+              <div className="space-y-1">
+                <CardTitle className="flex items-center gap-2">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-warning/15 text-warning">
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                  </span>
+                  Factures en retard
+                </CardTitle>
+                {facturesEnRetard.length > 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    {facturesEnRetard.length} affichée
+                    {facturesEnRetard.length > 1 ? "s" : ""} ·{" "}
+                    <span className="font-medium text-foreground">
+                      {formatCentsEUR(overdueTotalCents)}
+                    </span>
+                  </p>
+                ) : null}
+              </div>
+              <Button asChild variant="ghost" size="sm" className="h-8 shrink-0 text-xs">
+                <Link href="/factures">Voir tout</Link>
+              </Button>
             </CardHeader>
-            <CardContent>
-              {facturesEnRetard.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Aucune facture en retard.</p>
-              ) : (
-                <ul className="space-y-3">
-                  {facturesEnRetard.map((invoice) => (
-                    <li key={invoice.id} className="flex items-center justify-between text-sm">
-                      <div>
-                        <Link
-                          href={`/factures/${invoice.id}`}
-                          className="font-medium hover:underline"
-                        >
-                          {invoice.number ?? "Brouillon"}
-                        </Link>
-                        <p className="text-xs text-muted-foreground">
-                          {invoice.clientName} — {invoice.daysOverdue} j de retard
-                        </p>
-                      </div>
-                      <span className="tabular-nums">{formatCentsEUR(invoice.remainingCents)}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
+            <CardContent className="pt-3">
+              <OverdueInvoicesList invoices={facturesEnRetard} />
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
+          <Card className="overflow-hidden">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 border-b pb-4">
               <CardTitle>Derniers devis</CardTitle>
+              <Button asChild variant="ghost" size="sm" className="h-8 text-xs">
+                <Link href="/devis">Voir tout</Link>
+              </Button>
             </CardHeader>
-            <CardContent>
-              {derniersDevis.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Aucun devis pour l'instant.</p>
-              ) : (
-                <ul className="space-y-3">
-                  {derniersDevis.map((quote) => (
-                    <li key={quote.id} className="flex items-center justify-between text-sm">
-                      <div>
-                        <Link
-                          href={
-                            quote.status === "draft"
-                              ? `/devis/${quote.id}/modifier`
-                              : `/devis/${quote.id}`
-                          }
-                          className="font-medium hover:underline"
-                        >
-                          {quote.number ?? "Brouillon"}
-                        </Link>
-                        <p className="text-xs text-muted-foreground">
-                          {quote.clientName} — {formatDateShort(quote.createdAt)}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="tabular-nums">{formatCentsEUR(quote.totalCents)}</span>
-                        <StatusBadge status={quote.status as QuoteStatus} />
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
+            <CardContent className="pt-3">
+              <RecentQuotesList quotes={derniersDevis} />
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
+          <Card className="overflow-hidden">
+            <CardHeader className="border-b pb-4">
               <CardTitle>Activité récente</CardTitle>
             </CardHeader>
-            <CardContent>
-              <EventTimeline events={activiteEvents} />
+            <CardContent className="pt-3">
+              <RecentActivityList events={activiteEvents} />
             </CardContent>
           </Card>
         </div>

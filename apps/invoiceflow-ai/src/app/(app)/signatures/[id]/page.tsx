@@ -13,7 +13,7 @@ import {
 import { db } from "@/db";
 import { getCurrentOrganizationId, requireSession } from "@/modules/auth/session";
 import { getSignableDocumentById } from "@/modules/signable-documents/queries";
-import { SignPanel } from "@/modules/signable-documents/components/sign-panel";
+import { SignWorkspace } from "@/modules/signable-documents/components/sign-workspace";
 
 function formatDateLong(date: Date): string {
   return date.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
@@ -53,21 +53,20 @@ export default async function SignableDocumentPage({
         {doc.signedAt ? <Badge variant="success">Signé</Badge> : <Badge variant="info">En attente</Badge>}
       </PageHeader>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <Card className="overflow-hidden">
-            <CardContent className="p-0">
-              <iframe
-                title={doc.title}
-                src={pdfUrl}
-                className="h-[min(80vh,900px)] w-full bg-muted/30"
-              />
-            </CardContent>
-          </Card>
-        </div>
-
-        <div>
-          {doc.signedAt ? (
+      {doc.signedAt ? (
+        <div className="grid gap-4 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <Card className="overflow-hidden">
+              <CardContent className="p-0">
+                <iframe
+                  title={doc.title}
+                  src={pdfUrl}
+                  className="h-[min(80vh,900px)] w-full bg-muted/30"
+                />
+              </CardContent>
+            </Card>
+          </div>
+          <div>
             <Card>
               <CardHeader>
                 <CardTitle>Signature</CardTitle>
@@ -77,18 +76,16 @@ export default async function SignableDocumentPage({
                 <p className="text-muted-foreground">{formatDateLong(doc.signedAt)}</p>
               </CardContent>
             </Card>
-          ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle>Signer ce document</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <SignPanel documentId={doc.id} pageCount={doc.pageCount} />
-              </CardContent>
-            </Card>
-          )}
+          </div>
         </div>
-      </div>
+      ) : (
+        <SignWorkspace
+          documentId={doc.id}
+          pageCount={doc.pageCount}
+          pdfUrl={pdfUrl}
+          title={doc.title}
+        />
+      )}
     </>
   );
 }

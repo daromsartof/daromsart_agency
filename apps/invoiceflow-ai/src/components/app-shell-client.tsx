@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AppShell } from "@daromsart/ui";
-import { navSections, titleForPath } from "@/config/nav";
+import { navSections } from "@/config/nav";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UserMenu } from "@/components/user-menu";
 
@@ -20,7 +20,6 @@ export function AppShellClient({ user, children }: AppShellClientProps) {
     <AppShell
       sections={navSections}
       activeHref={pathname}
-      title={titleForPath(pathname)}
       linkComponent={Link}
       logo={
         <Link href="/" aria-label="Daroms'Art Systems" className="inline-flex items-center">
