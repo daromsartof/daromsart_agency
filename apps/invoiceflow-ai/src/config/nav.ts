@@ -1,4 +1,5 @@
 import {
+  FileSignature,
   FileText,
   LayoutDashboard,
   LayoutTemplate,
@@ -16,6 +17,7 @@ export const navSections: NavSection[] = [
       { label: "Devis", href: "/devis", icon: FileText },
       { label: "Factures", href: "/factures", icon: ReceiptText },
       { label: "Modèles", href: "/modeles", icon: LayoutTemplate },
+      { label: "Signatures", href: "/signatures", icon: FileSignature },
     ],
   },
   {
@@ -29,6 +31,7 @@ const PAGE_TITLES: { prefix: string; title: string }[] = [
   { prefix: "/devis", title: "Devis" },
   { prefix: "/factures", title: "Factures" },
   { prefix: "/modeles", title: "Modèles" },
+  { prefix: "/signatures", title: "Signatures" },
   { prefix: "/parametres", title: "Paramètres" },
 ];
 
