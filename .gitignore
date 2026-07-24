@@ -12,6 +12,13 @@ next-env.d.ts
 # turbo
 .turbo/
 
+# python (services/*)
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
 # env
 .env
 .env.local

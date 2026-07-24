@@ -19,6 +19,10 @@
     "docker:prod": "docker compose -f docker-compose.prod.yml up -d --build",
     "docker:prod:down": "docker compose -f docker-compose.prod.yml down",
     "docker:build:invoiceflow": "docker build -f apps/invoiceflow-ai/Dockerfile -t daromsart/invoiceflow-ai:latest .",
+    "docker:build:python-worker": "docker build -f services/python-worker/Dockerfile -t daromsart/python-worker:latest .",
+    "start:python-worker": "cd services/python-worker && uv run uvicorn app.main:app --reload --port 8000",
+    "test:python-worker": "cd services/python-worker && uv run pytest",
+    "lint:python-worker": "cd services/python-worker && uv run ruff check .",
     "format": "prettier --write \"**/*.{ts,tsx,css,md,json}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,css,md,json}\""
   },
