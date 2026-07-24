@@ -187,7 +187,7 @@ export function DocumentPdf({ data }: { data: DocumentPdfInput }) {
     <Document
       title={`${kindLabel} ${meta.number ?? "brouillon"}`}
       author={organization.legalName}
-      producer="InvoiceFlow AI"
+      producer="Daromsart Système"
     >
       <Page
         size="A4"

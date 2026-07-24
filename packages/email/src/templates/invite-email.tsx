@@ -17,17 +17,17 @@ export function InviteEmail({ organizationName, inviterName, role, url }: Invite
   return (
     <EmailLayout
       previewText={`${inviterName} vous invite à rejoindre ${organizationName}`}
-      accentColor="#7367F0"
+      accentColor="#185FA5"
       organizationName={organizationName}
     >
       <Text style={{ fontSize: "14px", color: "#1f1f29" }}>
-        {inviterName} vous invite à rejoindre <strong>{organizationName}</strong> sur InvoiceFlow AI
+        {inviterName} vous invite à rejoindre <strong>{organizationName}</strong> sur Daromsart Système
         en tant que {ROLE_LABEL[role]}. Ce lien est valable 7 jours.
       </Text>
       <Button
         href={url}
         style={{
-          backgroundColor: "#7367F0",
+          backgroundColor: "#185FA5",
           color: "#ffffff",
           padding: "12px 20px",
           borderRadius: "6px",

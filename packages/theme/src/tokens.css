@@ -1,100 +1,113 @@
 /**
- * Tokens de design Daromsart — source de vérité partagée par toutes les apps.
+ * Tokens de design Daroms'Art Systems — source de vérité partagée par toutes les apps.
  * Format ShadCN : variables HSL sans la fonction hsl() (composées dans le preset
- * Tailwind via `hsl(var(--token))`). Palette inspirée du template Vuexy.
+ * Tailwind via `hsl(var(--token))`). Palette de marque « Orbite » (bleu structure,
+ * teal action/succès) — voir packages/theme/src/tailwind-preset.ts pour les rampes
+ * bleu/teal complètes exposées comme couleurs Tailwind littérales (blue-50…900,
+ * teal-50…900), qui ne varient pas entre thème clair/sombre (seuls les rôles
+ * sémantiques ci-dessous changent de valeur selon le mode).
  *
  * Import : `import "@daromsart/theme/tokens.css";` dans le layout racine de l'app.
  */
 
 :root {
   /* Surfaces */
-  --background: 260 22% 98%;
-  --foreground: 252 13% 28%;
-  --card: 0 0% 100%;
-  --card-foreground: 252 13% 28%;
+  --background: 0 0% 100%;
+  --foreground: 217 33% 17%;
+  --card: 210 40% 98%;
+  --card-foreground: 217 33% 17%;
   --popover: 0 0% 100%;
-  --popover-foreground: 252 13% 28%;
+  --popover-foreground: 217 33% 17%;
 
-  /* Marque */
-  --primary: 249 84% 67%;
+  /* Marque — bleu structure */
+  --primary: 210 75% 37%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 250 20% 96%;
-  --secondary-foreground: 252 13% 28%;
+  --secondary: 210 40% 98%;
+  --secondary-foreground: 217 33% 17%;
 
-  --muted: 250 20% 96%;
-  --muted-foreground: 255 6% 45%;
+  --muted: 210 40% 98%;
+  --muted-foreground: 215 16% 47%;
 
-  --accent: 250 20% 96%;
-  --accent-foreground: 252 13% 28%;
+  --accent: 47 24% 93%;
+  --accent-foreground: 217 33% 17%;
 
-  /* États sémantiques */
-  --destructive: 0 78% 62%;
+  /* États sémantiques — valeur "texte" de chaque rôle (lisible en texte plein ET
+     en fond blanc/pressed avec foreground clair, cf. règle H2 : jamais le teal vif
+     en texte sur blanc, toujours son stop foncé). */
+  --destructive: 0 57% 41%;
   --destructive-foreground: 0 0% 100%;
-  --success: 147 67% 47%;
+  --success: 165 76% 25%;
   --success-foreground: 0 0% 100%;
-  --warning: 29 100% 63%;
-  --warning-foreground: 24 30% 15%;
-  --info: 187 100% 45%;
+  --warning: 33 85% 28%;
+  --warning-foreground: 0 0% 100%;
+  --info: 210 82% 27%;
   --info-foreground: 0 0% 100%;
 
   /* Traits & focus */
-  --border: 250 18% 91%;
-  --input: 250 18% 91%;
-  --ring: 249 84% 67%;
+  --border: 214 32% 91%;
+  --input: 214 32% 91%;
+  --ring: 210 75% 37%;
 
   /* Graphiques */
-  --chart-1: 249 84% 67%;
-  --chart-2: 147 67% 47%;
-  --chart-3: 29 100% 63%;
-  --chart-4: 187 100% 45%;
-  --chart-5: 0 78% 62%;
+  --chart-1: 210 75% 37%;
+  --chart-2: 161 69% 37%;
+  --chart-3: 35 78% 41%;
+  --chart-4: 210 71% 54%;
+  --chart-5: 0 72% 51%;
 
   /* Rayon (≈10px) */
   --radius: 0.625rem;
 
-  /* Polices (surchargées par next/font dans l'app) */
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
+  /* Polices — Space Grotesk (titres/logo) + Outfit (corps), injectées par
+     `next/font/google` dans le layout racine de chaque app. Repli système
+     si une app ne les charge pas encore. */
+  --font-sans: "Outfit", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-heading: "Space Grotesk", ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
 }
 
 .dark {
-  --background: 229 24% 19%;
-  --foreground: 250 20% 92%;
-  --card: 228 22% 24%;
-  --card-foreground: 250 20% 92%;
-  --popover: 228 22% 24%;
-  --popover-foreground: 250 20% 92%;
+  --background: 223 68% 6%;
+  --foreground: 214 32% 91%;
+  --card: 219 52% 11%;
+  --card-foreground: 214 32% 91%;
+  --popover: 215 45% 14%;
+  --popover-foreground: 214 32% 91%;
 
-  --primary: 249 84% 67%;
+  --primary: 210 75% 37%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 228 18% 30%;
-  --secondary-foreground: 250 20% 92%;
+  --secondary: 219 52% 11%;
+  --secondary-foreground: 214 32% 91%;
 
-  --muted: 228 18% 28%;
-  --muted-foreground: 250 12% 68%;
+  --muted: 219 52% 11%;
+  --muted-foreground: 215 20% 65%;
 
-  --accent: 228 18% 30%;
-  --accent-foreground: 250 20% 92%;
+  --accent: 215 45% 14%;
+  --accent-foreground: 214 32% 91%;
 
-  --destructive: 0 78% 62%;
+  /* Stops plus clairs qu'en mode clair : un ton "texte foncé sur blanc" perdrait
+     tout contraste sur fond quasi noir (cf. règle H7, brand-blue-light /
+     accent-teal-light = variantes dédiées aux fonds sombres). */
+  --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
-  --success: 147 63% 47%;
-  --success-foreground: 0 0% 100%;
-  --warning: 29 100% 63%;
-  --warning-foreground: 24 30% 15%;
-  --info: 187 100% 45%;
+  --success: 160 51% 58%;
+  --success-foreground: 170 86% 11%;
+  --warning: 37 93% 72%;
+  --warning-foreground: 33 85% 28%;
+  --info: 210 71% 54%;
   --info-foreground: 0 0% 100%;
 
-  --border: 228 16% 32%;
-  --input: 228 16% 32%;
-  --ring: 249 84% 67%;
+  --border: 214 52% 25%;
+  --input: 214 52% 25%;
+  --ring: 210 71% 54%;
 
-  --chart-1: 249 84% 70%;
-  --chart-2: 147 63% 52%;
-  --chart-3: 29 100% 63%;
-  --chart-4: 187 90% 50%;
-  --chart-5: 0 78% 65%;
+  --chart-1: 210 71% 54%;
+  --chart-2: 160 51% 58%;
+  --chart-3: 37 93% 72%;
+  --chart-4: 160 52% 75%;
+  --chart-5: 0 72% 51%;
 }

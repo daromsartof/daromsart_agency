@@ -13,6 +13,10 @@ const nextConfig = {
   // (clé sous `experimental` sur Next 14 ; top-level à partir de Next 15)
   experimental: {
     outputFileTracingRoot: path.join(dirname, "../../"),
+    // `src/instrumentation.ts` — bootstrap self-hosted de prod (migrations +
+    // compte admin), voir `db/startup.ts`. Stable à partir de Next 15 ; sur
+    // Next 14 le flag est requis explicitement.
+    instrumentationHook: true,
     // @react-pdf/renderer embarque un reconciler React "maison" qui exige le
     // runtime React standard : bundlé via webpack, il hérite du build React
     // "react-server" (conditions RSC) appliqué aux route handlers de l'App

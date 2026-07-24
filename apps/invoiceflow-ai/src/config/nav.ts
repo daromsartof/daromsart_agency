@@ -35,5 +35,5 @@ const PAGE_TITLES: { prefix: string; title: string }[] = [
 export function titleForPath(pathname: string): string {
   if (pathname === "/") return "Dashboard";
   const match = PAGE_TITLES.find((t) => pathname.startsWith(t.prefix));
-  return match?.title ?? "InvoiceFlow";
+  return match?.title ?? "Daromsart Système";
 }
