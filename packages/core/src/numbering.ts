@@ -44,3 +44,55 @@ export function formatDocumentNumber(
     return digits > 0 ? String(seq).padStart(digits, "0") : String(seq);
   });
 }
+
+const MAX_FORMAT_LENGTH = 40;
+const SEQ_TOKEN_PATTERN = /\{seq(?::(\d+))?\}/g;
+
+export type ValidateNumberFormatResult = { valid: true } | { valid: false; error: string };
+
+/**
+ * Validation STRICTE pour le formulaire de paramétrage (story 22) — distincte
+ * d'`isValidDocumentNumberFormat` (garde défensive à l'émission, plus
+ * permissive : tolère un format sans `{seq}` pour ne jamais bloquer une
+ * émission sur un format déjà enregistré). Un format soumis via ce
+ * formulaire DOIT contenir `{seq}` exactement une fois (parade « format sans
+ * seq → collision garantie ») et tout `{seq:n}` doit avoir 2 ≤ n ≤ 6.
+ */
+export function validateNumberFormat(format: string): ValidateNumberFormatResult {
+  if (!format.trim()) {
+    return { valid: false, error: "Le format ne peut pas être vide." };
+  }
+  if (format.length > MAX_FORMAT_LENGTH) {
+    return { valid: false, error: `Le format ne peut pas dépasser ${MAX_FORMAT_LENGTH} caractères.` };
+  }
+  if (!isValidDocumentNumberFormat(format)) {
+    return { valid: false, error: "Le format contient un token inconnu ou une accolade mal fermée." };
+  }
+
+  const seqMatches = [...format.matchAll(SEQ_TOKEN_PATTERN)];
+  if (seqMatches.length !== 1) {
+    return {
+      valid: false,
+      error:
+        seqMatches.length === 0
+          ? "Le format doit contenir le token {seq} (numéro de séquence)."
+          : "Le format ne peut contenir qu'un seul token {seq}.",
+    };
+  }
+  const pad = seqMatches[0][1];
+  if (pad !== undefined) {
+    const digits = Number(pad);
+    if (digits < 2 || digits > 6) {
+      return { valid: false, error: "Le nombre de chiffres de {seq:n} doit être compris entre 2 et 6." };
+    }
+  }
+
+  return { valid: true };
+}
+
+/** Aperçu d'un numéro pour un format donné, année civile courante — `seq` est
+ * déjà le numéro à afficher (l'appelant calcule `lastNumber + 1` en amont,
+ * lu depuis `number_sequences`). */
+export function previewNextNumber(format: string, seq: number): string {
+  return formatDocumentNumber(format, { year: new Date().getFullYear(), seq });
+}

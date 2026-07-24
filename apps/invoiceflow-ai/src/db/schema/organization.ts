@@ -1,4 +1,5 @@
 import {
+  boolean,
   integer,
   jsonb,
   numeric,
@@ -30,6 +31,10 @@ export interface EmailDefaults {
 /** Mentions légales par défaut (H21), configurables dans Paramètres. */
 export const DEFAULT_LEGAL_FOOTER =
   "En cas de retard de paiement, une pénalité au taux de trois fois le taux d'intérêt légal est exigible, ainsi qu'une indemnité forfaitaire pour frais de recouvrement de 40 € (art. L441-10 et D441-5 du Code de commerce). Pas d'escompte pour paiement anticipé. TVA non applicable, art. 293 B du CGI, le cas échéant.";
+
+/** Mention composée (jamais écrasée dans `legalFooter`) quand la franchise
+ * en base (art. 293 B) est activée depuis les paramètres (story 22). */
+export const FRANCHISE_MENTION = "TVA non applicable, art. 293 B du CGI.";
 
 /**
  * Textes d'email par défaut (H12), configurables dans Paramètres (story 22).
@@ -85,6 +90,9 @@ export const organizations = pgTable("organizations", {
   vatRateDefault: numeric("vat_rate_default", { precision: 5, scale: 2 })
     .notNull()
     .default("20"),
+  /** Franchise en base de TVA (art. 293 B) — force le taux par défaut à 0 %
+   * et compose la mention légale (story 22), sans écraser le texte custom. */
+  franchiseEnabled: boolean("franchise_enabled").notNull().default(false),
 
   // H21 : mentions légales par défaut (pénalités de retard, indemnité de
   // recouvrement, escompte, TVA art. 293 B) — configurables dans Paramètres.
