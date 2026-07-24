@@ -29,17 +29,20 @@ test.describe("Factures", () => {
       description: "Prestation e2e facture",
       unitPrice: "1000",
     });
-    await expect(page).toHaveURL(/\/factures\/.+\/modifier/, { timeout: 15_000 });
+    await expect(page.locator('iframe[title="Aperçu PDF de la facture"]')).toBeVisible();
+    await expect(page.getByRole("link", { name: "Modifier" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Envoyer" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Télécharger" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Archiver" })).toBeVisible();
 
-    // Émission depuis la fiche détail (redirection après enregistrement du brouillon).
-    const invoiceId = page.url().match(/\/factures\/([^/]+)\/modifier/)?.[1];
+    // Émission depuis la fiche détail.
+    const invoiceId = page.url().match(/\/factures\/([^/]+)$/)?.[1];
     expect(invoiceId).toBeTruthy();
-    await page.goto(`/factures/${invoiceId}`);
 
-    await page.getByRole("button", { name: "Émettre" }).click();
+    await page.getByRole("button", { name: "Émettre sans envoyer" }).click();
     await expect(page.getByText(/^FAC-\d{4}-\d{4}$/)).toBeVisible({ timeout: 15_000 });
-    // Une fois émise, l'échéance (30 jours) reste affichée dans la carte dédiée.
-    await expect(page.getByText("Date d'échéance")).toBeVisible();
+    // Une fois émise, l'échéance reste affichée dans la carte dédiée.
+    await expect(page.getByText("Échéance")).toBeVisible();
 
     const pdfResponse = await page.request.get(`/api/documents/factures/${invoiceId}/pdf`);
     expect(pdfResponse.ok()).toBe(true);

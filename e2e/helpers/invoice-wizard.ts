@@ -35,4 +35,5 @@ export async function completeInvoiceCreateWizard(
 
   await expect(page.getByText("Vérification & création")).toBeVisible();
   await page.getByRole("button", { name: "Créer la facture" }).click();
+  await expect(page).toHaveURL(/\/factures\/[0-9a-f-]{36}$/, { timeout: 15_000 });
 }

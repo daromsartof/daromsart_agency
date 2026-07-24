@@ -25,7 +25,6 @@ import {
   SelectValue,
   Stepper,
   Textarea,
-  cn,
   formatCentsEUR,
 } from "@daromsart/ui";
 import {
@@ -36,6 +35,7 @@ import {
 import { ClientPicker } from "./client-picker";
 import { LineEditor } from "./line-editor/line-editor";
 import { TotalsPanel } from "./totals-panel";
+import { TemplatePickerSlider } from "./template-picker-slider";
 import {
   documentFormSchema,
   documentFormToDraftInput,
@@ -43,7 +43,6 @@ import {
   type DocumentFormValues,
 } from "./document-form-schema";
 import type { DocumentFormSubmitResult } from "./document-form";
-import { TemplateThumbnail } from "@/modules/templates/components/template-thumbnail";
 
 const NO_DISCOUNT_VALUE = "none";
 const NO_TEMPLATE_VALUE = "default";
@@ -154,10 +153,11 @@ export function InvoiceCreateWizard({
   const nextLabels = ["Suivant", "Suivant : Modèle", "Suivant : Vérification"] as const;
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-6">
+    <div className="flex w-full min-w-0 flex-col space-y-6">
       <Stepper
         steps={[...STEPS]}
         current={step}
+        className="mx-auto w-full max-w-4xl"
         onStepClick={(index) => {
           if (index < step) setStep(index);
         }}
@@ -165,6 +165,7 @@ export function InvoiceCreateWizard({
 
       <Form {...form}>
         <form
+          className="flex min-h-0 flex-1 flex-col"
           onSubmit={form.handleSubmit(handleSubmit)}
           onKeyDown={(e) => {
             // Empêche Enter dans un input d'envoyer le form avant la dernière étape.
@@ -176,7 +177,7 @@ export function InvoiceCreateWizard({
             }
           }}
         >
-          <Card>
+          <Card className="flex min-h-[calc(100vh-14rem)] flex-col">
             <CardHeader>
               <CardTitle className="text-xl">
                 {step === 0 && "Sélectionner le client"}
@@ -186,7 +187,7 @@ export function InvoiceCreateWizard({
               </CardTitle>
             </CardHeader>
 
-            <CardContent className="space-y-6">
+            <CardContent className="flex-1 space-y-6">
               {step === 0 ? (
                 <div className="space-y-4">
                   <FormField
@@ -315,61 +316,11 @@ export function InvoiceCreateWizard({
                   render={({ field }) => (
                     <FormItem>
                       <FormMessage />
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <button
-                          type="button"
-                          onClick={() => field.onChange("")}
-                          className={cn(
-                            "rounded-xl border p-3 text-left transition-colors",
-                            !field.value
-                              ? "border-primary ring-2 ring-primary/20"
-                              : "hover:border-muted-foreground/40",
-                          )}
-                        >
-                          <div className="mb-2 flex items-center justify-between gap-2">
-                            <span className="font-medium">Modèle par défaut</span>
-                            {!field.value ? (
-                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
-                                ✓
-                              </span>
-                            ) : null}
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            Utilise le modèle défini par défaut pour les factures.
-                          </p>
-                        </button>
-                        {templateOptions.map((template) => {
-                          const selected = field.value === template.id;
-                          return (
-                            <button
-                              key={template.id}
-                              type="button"
-                              onClick={() => field.onChange(template.id)}
-                              className={cn(
-                                "rounded-xl border p-3 text-left transition-colors",
-                                selected
-                                  ? "border-primary ring-2 ring-primary/20"
-                                  : "hover:border-muted-foreground/40",
-                              )}
-                            >
-                              <div className="mb-2 flex items-start justify-between gap-2">
-                                <div>
-                                  <div className="font-medium">{template.name}</div>
-                                  {template.isDefault ? (
-                                    <div className="text-xs text-muted-foreground">Par défaut</div>
-                                  ) : null}
-                                </div>
-                                {selected ? (
-                                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
-                                    ✓
-                                  </span>
-                                ) : null}
-                              </div>
-                              <TemplateThumbnail options={template.options} />
-                            </button>
-                          );
-                        })}
-                      </div>
+                      <TemplatePickerSlider
+                        templates={templateOptions}
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
                     </FormItem>
                   )}
                 />
@@ -422,7 +373,7 @@ export function InvoiceCreateWizard({
               ) : null}
             </CardContent>
 
-            <CardFooter className="flex items-center justify-between gap-3 border-t pt-6">
+            <CardFooter className="mt-auto flex items-center justify-between gap-3 border-t pt-6">
               {step > 0 ? (
                 <Button type="button" variant="outline" onClick={goBack}>
                   Retour

@@ -33,7 +33,12 @@ export default async function ModifierFacturePage({
   const templates = await listTemplates(db, organizationId);
   const invoiceTemplates = templates
     .filter((t) => t.type === "invoice" || t.type === "both")
-    .map((t) => ({ id: t.id, name: t.name, isDefault: t.isDefault }));
+    .map((t) => ({
+      id: t.id,
+      name: t.name,
+      isDefault: t.isDefault,
+      options: t.options,
+    }));
 
   if (invoice.kind === "credit_note") {
     const parent = invoice.parentInvoiceId

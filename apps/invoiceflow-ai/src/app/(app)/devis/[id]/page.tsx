@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import {
+  Button,
   Card,
   CardContent,
   CardHeader,
@@ -15,6 +16,7 @@ import {
   TableRow,
 } from "@daromsart/ui";
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { renderEmailVariables } from "@daromsart/core";
 import { db } from "@/db";
 import { env } from "@/lib/env";
@@ -95,52 +97,45 @@ export default async function DevisDetailPage({
   return (
     <>
       <PageHeader
-        title={`Devis — ${quote.clientName}`}
-        description={quote.number ?? "Brouillon (numéro attribué à l'émission)"}
+        back={
+          <Button asChild variant="ghost" size="icon" aria-label="Retour aux devis">
+            <Link href="/devis">
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+          </Button>
+        }
+        title={quote.number ?? "Brouillon"}
+        description={quote.clientName}
       >
-        <QuoteDetailActions
-          quote={quote}
-          publicUrl={publicUrl}
-          defaultRecipient={client?.email ?? null}
-          defaultSubject={defaultSubject}
-          defaultBody={defaultBody}
-        />
+        <div className="flex flex-wrap items-center gap-3">
+          <StatusBadge status={quote.status} />
+          <QuoteDetailActions
+            quote={quote}
+            publicUrl={publicUrl}
+            defaultRecipient={client?.email ?? null}
+            defaultSubject={defaultSubject}
+            defaultBody={defaultBody}
+          />
+        </div>
       </PageHeader>
 
       {lastEmail && (lastEmail.status === "bounced" || lastEmail.status === "complained") ? (
         <div className="mb-4 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
-          L'adresse {lastEmail.to.join(", ")} semble invalide (email non délivré).
+          L&apos;adresse {lastEmail.to.join(", ")} semble invalide (email non délivré).
         </div>
       ) : null}
 
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm text-muted-foreground">Statut</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <StatusBadge status={quote.status} />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm text-muted-foreground">
-                  Date d'émission
-                </CardTitle>
-              </CardHeader>
-              <CardContent>{formatDateLong(quote.issueDate)}</CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm text-muted-foreground">
-                  Valide jusqu'au
-                </CardTitle>
-              </CardHeader>
-              <CardContent>{formatDateLong(quote.validUntil)}</CardContent>
-            </Card>
-          </div>
+          <Card className="overflow-hidden">
+            <CardContent className="p-0">
+              <iframe
+                title="Aperçu PDF du devis"
+                src={pdfUrl}
+                className="h-[min(80vh,900px)] w-full bg-muted/30"
+              />
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>
@@ -225,22 +220,29 @@ export default async function DevisDetailPage({
               </CardContent>
             </Card>
           ) : null}
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Aperçu PDF</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <iframe
-                title="Aperçu PDF du devis"
-                src={pdfUrl}
-                className="h-[600px] w-full rounded border"
-              />
-            </CardContent>
-          </Card>
         </div>
 
         <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm text-muted-foreground">Dates</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">Émission</span>
+                <span>{formatDateLong(quote.issueDate)}</span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">Valide jusqu&apos;au</span>
+                <span>{formatDateLong(quote.validUntil)}</span>
+              </div>
+              <div className="flex justify-between gap-4 border-t pt-3 font-semibold">
+                <span>Total TTC</span>
+                <span className="tabular-nums">{formatCentsEUR(quote.totalCents)}</span>
+              </div>
+            </CardContent>
+          </Card>
+
           {linkedInvoice ? (
             <Card>
               <CardHeader>

@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import {
   Badge,
+  Button,
   Card,
   CardContent,
   CardHeader,
@@ -16,6 +17,7 @@ import {
   TableRow,
 } from "@daromsart/ui";
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { isOverdue, renderEmailVariables } from "@daromsart/core";
 import { db } from "@/db";
 import { env } from "@/lib/env";
@@ -272,63 +274,56 @@ export default async function FactureDetailPage({
   return (
     <>
       <PageHeader
-        title={`Facture — ${invoice.clientName}`}
-        description={invoice.number ?? "Brouillon (numéro attribué à l'émission)"}
+        back={
+          <Button asChild variant="ghost" size="icon" aria-label="Retour aux factures">
+            <Link href="/factures">
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+          </Button>
+        }
+        title={invoice.number ?? "Brouillon"}
+        description={invoice.clientName}
       >
-        <InvoiceDetailActions
-          invoice={invoice}
-          publicUrl={publicUrl}
-          defaultRecipient={client?.email ?? null}
-          defaultSubject={defaultSubject}
-          defaultBody={defaultBody}
-          overdue={overdue}
-          daysOverdue={daysOverdue}
-          remainingCents={invoice.totalCents - invoice.amountPaidCents}
-          defaultReminderSubject={defaultReminderSubject}
-          defaultReminderBody={defaultReminderBody}
-        />
+        <div className="flex flex-wrap items-center gap-3">
+          <StatusBadge status={invoice.status} />
+          <InvoiceDetailActions
+            invoice={invoice}
+            publicUrl={publicUrl}
+            defaultRecipient={client?.email ?? null}
+            defaultSubject={defaultSubject}
+            defaultBody={defaultBody}
+            overdue={overdue}
+            daysOverdue={daysOverdue}
+            remainingCents={invoice.totalCents - invoice.amountPaidCents}
+            defaultReminderSubject={defaultReminderSubject}
+            defaultReminderBody={defaultReminderBody}
+          />
+        </div>
       </PageHeader>
 
       {invoice.status === "cancelled" && cancelledByCreditNoteNumber ? (
         <div className="mb-4 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
-          Annulée par l'avoir {cancelledByCreditNoteNumber}.
+          Annulée par l&apos;avoir {cancelledByCreditNoteNumber}.
         </div>
       ) : null}
 
       {lastEmail && (lastEmail.status === "bounced" || lastEmail.status === "complained") ? (
         <div className="mb-4 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
-          L'adresse {lastEmail.to.join(", ")} semble invalide (email non délivré).
+          L&apos;adresse {lastEmail.to.join(", ")} semble invalide (email non délivré).
         </div>
       ) : null}
 
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm text-muted-foreground">Statut</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <StatusBadge status={invoice.status} />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm text-muted-foreground">
-                  Date d'émission
-                </CardTitle>
-              </CardHeader>
-              <CardContent>{formatDateLong(invoice.issueDate)}</CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm text-muted-foreground">
-                  Date d'échéance
-                </CardTitle>
-              </CardHeader>
-              <CardContent>{formatDateLong(invoice.dueDate)}</CardContent>
-            </Card>
-          </div>
+          <Card className="overflow-hidden">
+            <CardContent className="p-0">
+              <iframe
+                title="Aperçu PDF de la facture"
+                src={pdfUrl}
+                className="h-[min(80vh,900px)] w-full bg-muted/30"
+              />
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>
@@ -405,22 +400,35 @@ export default async function FactureDetailPage({
             isAdmin={role === "admin"}
             canRecord={canRecordPayment}
           />
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Aperçu PDF</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <iframe
-                title="Aperçu PDF de la facture"
-                src={pdfUrl}
-                className="h-[600px] w-full rounded border"
-              />
-            </CardContent>
-          </Card>
         </div>
 
         <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm text-muted-foreground">Dates</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">Émission</span>
+                <span>{formatDateLong(invoice.issueDate)}</span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">Échéance</span>
+                <span>{formatDateLong(invoice.dueDate)}</span>
+              </div>
+              <div className="flex justify-between gap-4 border-t pt-3 font-semibold">
+                <span>Total TTC</span>
+                <span className="tabular-nums">{formatCentsEUR(invoice.totalCents)}</span>
+              </div>
+              <div className="flex justify-between gap-4 text-muted-foreground">
+                <span>Reste dû</span>
+                <span className="tabular-nums">
+                  {formatCentsEUR(invoice.totalCents - invoice.amountPaidCents)}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
           {originQuote ? (
             <Card>
               <CardHeader>

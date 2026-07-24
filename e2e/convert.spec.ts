@@ -24,10 +24,9 @@ async function createAndIssueQuote(page: Page): Promise<string> {
     .first()
     .fill("Prestation e2e conversion");
   await page.getByRole("button", { name: "Créer le devis" }).click();
-  await expect(page).toHaveURL(/\/devis\/[0-9a-f-]{36}\/modifier$/, { timeout: 15_000 });
+  await expect(page).toHaveURL(/\/devis\/[0-9a-f-]{36}$/, { timeout: 15_000 });
 
-  const quoteId = page.url().split("/devis/")[1].split("/modifier")[0];
-  await page.goto(`/devis/${quoteId}`);
+  const quoteId = page.url().split("/devis/")[1];
   await page.getByRole("button", { name: "Émettre sans envoyer" }).click();
   await expect(page.getByText(/Devis émis/)).toBeVisible();
   return quoteId;

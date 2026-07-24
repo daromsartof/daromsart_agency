@@ -20,10 +20,11 @@ import {
   SelectValue,
   Textarea,
 } from "@daromsart/ui";
-import type { DocumentDraftInput } from "@daromsart/core";
+import type { DocumentDraftInput, TemplateOptions } from "@daromsart/core";
 import { ClientPicker } from "./client-picker";
 import { LineEditor } from "./line-editor/line-editor";
 import { TotalsPanel } from "./totals-panel";
+import { TemplatePickerSlider } from "./template-picker-slider";
 import {
   documentFormSchema,
   documentFormToDraftInput,
@@ -33,7 +34,6 @@ import {
 // Radix Select interdit `<SelectItem value="">` (réservée au clear interne) :
 // sentinels dédiés, traduits en "" au niveau du champ RHF.
 const NO_DISCOUNT_VALUE = "none";
-const NO_TEMPLATE_VALUE = "default";
 
 export type DocumentFormSubmitResult =
   | { ok: true; id?: string }
@@ -43,6 +43,8 @@ export interface DocumentTemplateOption {
   id: string;
   name: string;
   isDefault: boolean;
+  /** Options de rendu — nécessaires pour la vignette d'aperçu. */
+  options?: TemplateOptions;
 }
 
 export interface DocumentFormProps {
@@ -148,39 +150,27 @@ export function DocumentForm({
               </FormItem>
             )}
           />
+        </div>
+
+        {templateOptions.length > 0 ? (
           <FormField
             control={form.control}
             name="templateId"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Modèle</FormLabel>
-                <Select
-                  value={field.value || NO_TEMPLATE_VALUE}
-                  onValueChange={(value) =>
-                    field.onChange(value === NO_TEMPLATE_VALUE ? "" : value)
-                  }
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Modèle par défaut de l'organisation" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {/* Radix interdit une SelectItem `value=""` (réservé au clear) : sentinel dédié. */}
-                    <SelectItem value={NO_TEMPLATE_VALUE}>Modèle par défaut</SelectItem>
-                    {templateOptions.map((template) => (
-                      <SelectItem key={template.id} value={template.id}>
-                        {template.name}
-                        {template.isDefault ? " (défaut)" : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <FormControl>
+                  <TemplatePickerSlider
+                    templates={templateOptions}
+                    value={field.value}
+                    onChange={field.onChange}
+                  />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
-        </div>
+        ) : null}
 
         <div>
           <h3 className="mb-3 text-sm font-medium text-muted-foreground">Lignes</h3>

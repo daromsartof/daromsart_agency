@@ -28,7 +28,10 @@ export function SettingsNav({ isAdmin }: SettingsNavProps) {
   const items = ITEMS.filter((item) => isAdmin || !item.adminOnly);
 
   return (
-    <nav className="flex flex-col gap-1" aria-label="Paramètres">
+    <nav
+      className="sticky top-0 z-10 flex flex-col gap-1 self-start bg-background pb-4"
+      aria-label="Paramètres"
+    >
       {items.map((item) => {
         const active = pathname.startsWith(item.href);
         return (

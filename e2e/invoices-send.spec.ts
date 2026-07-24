@@ -28,10 +28,8 @@ test.describe("Envoi de facture", () => {
       description: "Prestation envoi e2e",
       unitPrice: "500",
     });
-    await expect(page).toHaveURL(/\/factures\/.+\/modifier/, { timeout: 15_000 });
 
-    const invoiceId = page.url().match(/\/factures\/([^/]+)\/modifier/)?.[1];
-    await page.goto(`/factures/${invoiceId}`);
+    const invoiceId = page.url().match(/\/factures\/([^/]+)$/)?.[1];
     await expect(page).toHaveURL(/\/factures\/[0-9a-f-]{36}$/, { timeout: 15_000 });
 
     await page.getByRole("button", { name: /Renvoyer|Envoyer/ }).click();

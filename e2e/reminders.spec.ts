@@ -43,10 +43,8 @@ test.describe("Relance manuelle", () => {
         await page.getByRole("gridcell", { name: "1", exact: true }).first().click();
       },
     });
-    await expect(page).toHaveURL(/\/factures\/.+\/modifier/, { timeout: 15_000 });
 
-    const invoiceId = page.url().match(/\/factures\/([^/]+)\/modifier/)?.[1];
-    await page.goto(`/factures/${invoiceId}`);
+    const invoiceId = page.url().match(/\/factures\/([^/]+)$/)?.[1];
     await page.getByRole("button", { name: "Émettre sans envoyer" }).click();
     await expect(page.getByText(/^FAC-\d{4}-\d{4}$/)).toBeVisible({ timeout: 15_000 });
 

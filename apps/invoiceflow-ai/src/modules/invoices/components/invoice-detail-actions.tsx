@@ -5,11 +5,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
+  Archive,
   Copy,
   Download,
   FileMinus,
   Mail,
   MoreHorizontal,
+  Pencil,
   Send,
   Trash2,
 } from "lucide-react";
@@ -35,10 +37,8 @@ import { SendDialog } from "@/modules/documents/components/send-dialog";
 import type { InvoiceDetail } from "@/modules/invoices/queries";
 
 /**
- * Miroir de `quote-detail-actions.tsx` (story 07/08/10/11), simplifié : pas
- * de signature ni de refus côté facture (H15). Story 14 : envoi par email.
- * Story 16 : relance (visible uniquement si `overdue`), même `SendDialog`
- * générique en mode "relance" (bannière jours de retard + anti-spam < 24 h).
+ * Miroir de `quote-detail-actions.tsx` : Modifier / Envoyer / Télécharger / Archiver
+ * en actions principales, plus relance / avoir / émettre dans le flux facture.
  */
 export interface InvoiceDetailActionsProps {
   invoice: InvoiceDetail;
@@ -93,7 +93,7 @@ export function InvoiceDetailActions({
         return;
       }
       toast.success("Facture dupliquée.");
-      router.push(`/factures/${result.id}/modifier`);
+      router.push(`/factures/${result.id}`);
     });
   }
 
@@ -105,7 +105,7 @@ export function InvoiceDetailActions({
         toast.error("Échec de la suppression.");
         return;
       }
-      toast.success("Facture supprimée.");
+      toast.success("Facture archivée.");
       router.push("/factures");
     });
   }
@@ -131,10 +131,20 @@ export function InvoiceDetailActions({
   const isDraft = invoice.status === "draft";
   const alreadySent = invoice.status !== "draft" && invoice.status !== "issued";
   const canCreateCreditNote = invoice.status !== "draft" && invoice.status !== "cancelled";
+  const pdfHref = `/api/documents/factures/${invoice.id}/pdf`;
 
   return (
     <div className="flex flex-col items-end gap-1">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {isDraft ? (
+          <Button asChild size="sm" variant="outline">
+            <Link href={`/factures/${invoice.id}/modifier`}>
+              <Pencil className="mr-2 h-4 w-4" />
+              Modifier
+            </Link>
+          </Button>
+        ) : null}
+
         <SendDialog
           trigger={
             <Button size="sm" disabled={pending}>
@@ -150,6 +160,25 @@ export function InvoiceDetailActions({
           onSend={(input) => sendInvoiceEmailAction(invoice.id, input)}
           onSuccess={() => router.refresh()}
         />
+
+        <Button asChild size="sm" variant="outline">
+          <a href={pdfHref} download target="_blank" rel="noreferrer">
+            <Download className="mr-2 h-4 w-4" />
+            Télécharger
+          </a>
+        </Button>
+
+        {isDraft ? (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={pending}
+            onClick={() => setConfirmDelete(true)}
+          >
+            <Archive className="mr-2 h-4 w-4" />
+            Archiver
+          </Button>
+        ) : null}
 
         {overdue ? (
           <SendDialog
@@ -174,23 +203,10 @@ export function InvoiceDetailActions({
           />
         ) : null}
 
-        {!isDraft ? (
-          <Button asChild size="sm" variant="outline">
-            <a href={`/api/documents/factures/${invoice.id}/pdf`} target="_blank" rel="noreferrer">
-              <Download className="mr-2 h-4 w-4" />
-              Télécharger le PDF
-            </a>
-          </Button>
-        ) : (
-          <Button size="sm" variant="outline" disabled={pending} onClick={handleIssue}>
+        {isDraft ? (
+          <Button size="sm" variant="ghost" disabled={pending} onClick={handleIssue}>
             <Send className="mr-2 h-4 w-4" />
             Émettre sans envoyer
-          </Button>
-        )}
-
-        {isDraft ? (
-          <Button asChild size="sm" variant="outline">
-            <Link href={`/factures/${invoice.id}/modifier`}>Modifier</Link>
           </Button>
         ) : null}
 
@@ -236,9 +252,9 @@ export function InvoiceDetailActions({
       <ConfirmDialog
         open={confirmDelete}
         onOpenChange={setConfirmDelete}
-        title="Supprimer cette facture ?"
-        description="Cette facture brouillon sera définitivement supprimée."
-        confirmLabel="Supprimer"
+        title="Archiver cette facture ?"
+        description="Cette facture brouillon sera définitivement retirée de la liste."
+        confirmLabel="Archiver"
         destructive
         onConfirm={handleDelete}
       />
