@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import type { LucideIcon } from "lucide-react";
-import { Menu } from "lucide-react";
+import { Menu, PanelLeft, PanelLeftClose } from "lucide-react";
 
 import { cn } from "../lib/utils";
 import { initials } from "../lib/format";
@@ -32,6 +32,8 @@ export interface NavSection {
  * friction, tout en tolérant un simple `<a>`.
  */
 type LinkComponent = React.ElementType;
+
+const SIDEBAR_STORAGE_KEY = "daromsart-sidebar-open";
 
 const DefaultLink = ({
   href,
@@ -126,12 +128,39 @@ function AppShell({
   children,
 }: AppShellProps) {
   const [mobileOpen, setMobileOpen] = React.useState(false);
+  const [sidebarOpen, setSidebarOpen] = React.useState(true);
+  const [sidebarReady, setSidebarReady] = React.useState(false);
+
+  React.useEffect(() => {
+    try {
+      if (localStorage.getItem(SIDEBAR_STORAGE_KEY) === "0") {
+        setSidebarOpen(false);
+      }
+    } catch {
+      // localStorage indisponible (mode privé strict, etc.)
+    }
+    setSidebarReady(true);
+  }, []);
+
+  React.useEffect(() => {
+    if (!sidebarReady) return;
+    try {
+      localStorage.setItem(SIDEBAR_STORAGE_KEY, sidebarOpen ? "1" : "0");
+    } catch {
+      // ignore
+    }
+  }, [sidebarOpen, sidebarReady]);
 
   return (
     // h-svh + overflow-hidden : sidebar et topbar restent fixes ; seul <main> scroll.
     <div className="flex h-svh overflow-hidden bg-background">
       {/* Sidebar desktop */}
-      <aside className="hidden h-full w-64 shrink-0 flex-col border-r bg-card lg:flex">
+      <aside
+        className={cn(
+          "hidden h-full w-64 shrink-0 flex-col border-r bg-card lg:flex",
+          !sidebarOpen && "lg:hidden",
+        )}
+      >
         <div className="flex h-16 shrink-0 items-center px-5">
           {logo ?? <span className="text-lg font-semibold">Daromsart Système</span>}
         </div>
@@ -176,6 +205,22 @@ function AppShell({
               </div>
             </SheetContent>
           </Sheet>
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="hidden lg:inline-flex"
+            aria-label={sidebarOpen ? "Masquer le menu" : "Afficher le menu"}
+            aria-pressed={sidebarOpen}
+            onClick={() => setSidebarOpen((open) => !open)}
+          >
+            {sidebarOpen ? (
+              <PanelLeftClose className="h-5 w-5" />
+            ) : (
+              <PanelLeft className="h-5 w-5" />
+            )}
+          </Button>
 
           <div className="min-w-0 flex-1" />
 
