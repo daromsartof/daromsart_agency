@@ -3,7 +3,7 @@ import type { InvoiceStatus, QuoteStatus } from "@daromsart/core";
 import type { AppDb } from "../../db/types";
 import { clients, invoices, organizations, quotes, signatures } from "../../db/schema";
 
-export interface PublicQuoteSignature {
+export interface PublicSignature {
   name: string;
   email: string | null;
   imageKey: string;
@@ -22,7 +22,7 @@ export interface PublicQuoteData {
   totalCents: number;
   refusalReason: string | null;
   organizationName: string;
-  signature: PublicQuoteSignature | null;
+  signature: PublicSignature | null;
 }
 
 /**
@@ -91,6 +91,9 @@ export interface PublicInvoiceData {
   organizationName: string;
   iban: string | null;
   bic: string | null;
+  /** Preuve d'acceptation orthogonale au statut de paiement (story 24). */
+  signedAt: Date | null;
+  signature: PublicSignature | null;
 }
 
 /**
@@ -115,12 +118,24 @@ export async function getInvoiceByToken(
       totalCents: invoices.totalCents,
       amountPaidCents: invoices.amountPaidCents,
       organizationSnapshot: invoices.organizationSnapshot,
+      signedAt: invoices.signedAt,
     })
     .from(invoices)
     .innerJoin(clients, eq(clients.id, invoices.clientId))
     .where(eq(invoices.shareToken, token))
     .limit(1);
   if (!row) return null;
+
+  const [signatureRow] = await db
+    .select({
+      name: signatures.signerName,
+      email: signatures.signerEmail,
+      imageKey: signatures.imageKey,
+      signedAt: signatures.signedAt,
+    })
+    .from(signatures)
+    .where(eq(signatures.invoiceId, row.id))
+    .limit(1);
 
   return {
     id: row.id,
@@ -136,5 +151,7 @@ export async function getInvoiceByToken(
     organizationName: row.organizationSnapshot?.legalName ?? "",
     iban: row.organizationSnapshot?.iban ?? null,
     bic: row.organizationSnapshot?.bic ?? null,
+    signedAt: row.signedAt,
+    signature: signatureRow ?? null,
   };
 }

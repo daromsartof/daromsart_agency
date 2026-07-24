@@ -68,7 +68,7 @@ describe("renderDocumentPdf", () => {
     expect(buffer.length).toBeGreaterThan(1000);
   });
 
-  it("rend une facture avec échéance et sans zone de signature", async () => {
+  it("rend une facture avec échéance et zone de signature vide", async () => {
     const buffer = await renderDocumentPdf(
       fixture({
         meta: {
@@ -77,6 +77,30 @@ describe("renderDocumentPdf", () => {
           issueDate: new Date("2026-07-01"),
           dueOrValidUntil: new Date("2026-07-31"),
           title: null,
+        },
+      }),
+    );
+    expect(buffer.subarray(0, 5).toString("utf8")).toBe("%PDF-");
+  });
+
+  it("rend une facture signée (story 24)", async () => {
+    const buffer = await renderDocumentPdf(
+      fixture({
+        meta: {
+          kind: "invoice",
+          number: "FAC-2026-0001",
+          issueDate: new Date("2026-07-01"),
+          dueOrValidUntil: new Date("2026-07-31"),
+          title: null,
+        },
+        signature: {
+          name: "Jean Dupont",
+          email: "jean.dupont@example.com",
+          signedAt: new Date("2026-07-05T14:32:00Z"),
+          imageDataUrl:
+            "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+          ip: "203.0.113.42",
+          originalPdfHash: "abcd1234efgh5678",
         },
       }),
     );

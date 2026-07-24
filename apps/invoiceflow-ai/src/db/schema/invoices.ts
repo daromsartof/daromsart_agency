@@ -86,6 +86,16 @@ export const invoices = pgTable(
     cancelledAt: timestamp("cancelled_at"),
     lastReminderAt: timestamp("last_reminder_at"),
 
+    /** Signature manuscrite du client (story 24, symétrique des devis) —
+     * orthogonale au statut de paiement : signer une facture n'en change
+     * jamais le `status`, c'est une preuve d'acceptation qui coexiste avec
+     * n'importe quel état (sent/viewed/paid/overdue...). */
+    signedAt: timestamp("signed_at"),
+    /** Archivée après signature — jamais le PDF non signé (même règle que
+     * `quotes.pdfSignedKey`). */
+    pdfSignedKey: text("pdf_signed_key"),
+    pdfHash: text("pdf_hash"),
+
     globalDiscountType: text("global_discount_type").$type<"percent" | "amount">(),
     globalDiscountValue: numeric("global_discount_value", { precision: 12, scale: 2 }),
 

@@ -78,6 +78,13 @@
       "when": 1784679726039,
       "tag": "0010_magenta_obadiah_stane",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1784917277704,
+      "tag": "0011_faulty_firebird",
+      "breakpoints": true
     }
   ]
 }

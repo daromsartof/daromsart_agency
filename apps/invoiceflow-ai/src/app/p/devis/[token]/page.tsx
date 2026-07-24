@@ -90,7 +90,7 @@ export default async function PublicQuotePage({
 
       {signable ? (
         <div className="sticky bottom-4 flex justify-center gap-3 rounded-lg border bg-background p-4 shadow-lg">
-          <SignDialog token={params.token} defaultEmail={quote.clientEmail} />
+          <SignDialog token={params.token} kind="quote" defaultEmail={quote.clientEmail} />
           <RefuseDialog token={params.token} />
         </div>
       ) : null}

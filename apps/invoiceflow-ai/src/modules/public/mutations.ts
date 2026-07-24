@@ -8,14 +8,20 @@ import type { AppDb } from "../../db/types";
 import { emailLogs, invoices, quotes, signatures } from "../../db/schema";
 import { addDocumentEvent } from "../documents/events";
 import { buildQuotePdfInput } from "../documents/pdf";
+import { buildInvoicePdfInput } from "../invoices/pdf";
+import { parseSignaturePng } from "../documents/signature-validation";
 import { env } from "../../lib/env";
-import { getQuoteByToken } from "./queries";
-
-const MAX_SIGNATURE_PNG_BYTES = 500 * 1024;
+import { getInvoiceByToken, getQuoteByToken } from "./queries";
 
 function sha256Hex(buffer: Buffer): string {
   return createHash("sha256").update(buffer).digest("hex");
 }
+
+const SIGNATURE_ERROR_MESSAGES: Record<"invalid" | "empty" | "too_large", string> = {
+  invalid: "Signature invalide.",
+  empty: "Signature requise.",
+  too_large: "Signature trop volumineuse.",
+};
 
 /**
  * Marque un devis comme vu (première consultation publique, H14). Idempotent
@@ -88,20 +94,23 @@ async function sendConfirmationAndLog(
   db: AppDb,
   mailer: Mailer,
   organizationId: string,
-  quoteId: string,
+  documentType: "quote" | "invoice",
+  documentId: string,
   params: SendSignatureConfirmationParams,
 ): Promise<void> {
   const result = await mailer.sendSignatureConfirmation(params);
   const now = new Date();
+  const label = params.documentKind === "invoice" ? "Facture" : "Devis";
+  const signedAdjective = params.documentKind === "invoice" ? "signée" : "signé";
   await db.insert(emailLogs).values({
     organizationId,
-    documentType: "quote",
-    documentId: quoteId,
+    documentType,
+    documentId,
     kind: "document",
     to: [params.to],
     subject: params.forOrganization
-      ? `Devis ${params.quoteNumber} signé`
-      : `Signature confirmée — devis ${params.quoteNumber}`,
+      ? `${label} ${params.documentNumber} ${signedAdjective}`
+      : `Signature confirmée — ${label.toLowerCase()} ${params.documentNumber}`,
     status: result.ok ? "sent" : "failed",
     resendId: result.ok ? result.id : null,
     errorMessage: result.ok ? null : result.error,
@@ -142,17 +151,11 @@ export async function signQuote(
   if (!input.name.trim()) {
     return { ok: false, errors: { name: "Le nom est requis." } };
   }
-  const pngMatch = /^data:image\/png;base64,(.+)$/.exec(input.pngDataUrl);
-  if (!pngMatch) {
-    return { ok: false, errors: { signature: "Signature invalide." } };
+  const parsedPng = parseSignaturePng(input.pngDataUrl);
+  if (!parsedPng.ok) {
+    return { ok: false, errors: { signature: SIGNATURE_ERROR_MESSAGES[parsedPng.reason] } };
   }
-  const pngBuffer = Buffer.from(pngMatch[1], "base64");
-  if (pngBuffer.byteLength === 0) {
-    return { ok: false, errors: { signature: "Signature requise." } };
-  }
-  if (pngBuffer.byteLength > MAX_SIGNATURE_PNG_BYTES) {
-    return { ok: false, errors: { signature: "Signature trop volumineuse." } };
-  }
+  const pngBuffer = parsedPng.buffer;
 
   const unsignedInput = await buildQuotePdfInput(db, storage, quote.organizationId, quote.id);
   if (!unsignedInput) {
@@ -214,15 +217,16 @@ export async function signQuote(
   const publicUrl = `${env.APP_URL}/p/devis/${token}`;
   const organizationName = unsignedInput.organization.tradeName ?? unsignedInput.organization.legalName;
   const accentColor = unsignedInput.template.accentColor;
-  const quoteNumber = quote.number ?? "";
+  const documentNumber = quote.number ?? "";
   const pdfFilename = `devis-signe-${quote.number ?? quote.id}.pdf`;
 
   if (quote.clientEmail) {
-    await sendConfirmationAndLog(db, mailer, quote.organizationId, quote.id, {
+    await sendConfirmationAndLog(db, mailer, quote.organizationId, "quote", quote.id, {
       to: quote.clientEmail,
       organizationName,
       accentColor,
-      quoteNumber,
+      documentKind: "quote",
+      documentNumber,
       clientName: quote.clientName,
       signerName: input.name.trim(),
       forOrganization: false,
@@ -232,12 +236,154 @@ export async function signQuote(
     });
   }
   if (unsignedInput.organization.email) {
-    await sendConfirmationAndLog(db, mailer, quote.organizationId, quote.id, {
+    await sendConfirmationAndLog(db, mailer, quote.organizationId, "quote", quote.id, {
       to: unsignedInput.organization.email,
       organizationName,
       accentColor,
-      quoteNumber,
+      documentKind: "quote",
+      documentNumber,
       clientName: quote.clientName,
+      signerName: input.name.trim(),
+      forOrganization: true,
+      publicUrl,
+    });
+  }
+
+  return { ok: true };
+}
+
+export interface SignInvoiceInput {
+  name: string;
+  email?: string | null;
+  /** Data URL PNG du tracé (canvas maison, cf. modules/public/components). */
+  pngDataUrl: string;
+  ip?: string | null;
+  userAgent?: string | null;
+}
+
+export type SignInvoiceResult = { ok: true } | { ok: false; errors: Record<string, string> };
+
+/**
+ * Signature publique de facture (story 24, miroir de `signQuote`) — même
+ * flux (hash du PDF non signé, archivage du PDF signé, journalisation,
+ * emails de confirmation) SANS transition de statut : signer une facture
+ * est une preuve d'acceptation orthogonale à son statut de paiement, jamais
+ * une transition de `InvoiceStatus`. Pas d'expiration non plus (les
+ * factures n'ont pas de date de validité comme les devis).
+ */
+export async function signInvoice(
+  db: AppDb,
+  storage: Storage,
+  mailer: Mailer,
+  token: string,
+  input: SignInvoiceInput,
+): Promise<SignInvoiceResult> {
+  const invoice = await getInvoiceByToken(db, token);
+  if (!invoice) {
+    return { ok: false, errors: { _root: "Lien invalide." } };
+  }
+  if (invoice.status === "draft" || invoice.status === "cancelled") {
+    return { ok: false, errors: { _root: "Cette facture ne peut pas être signée." } };
+  }
+  if (invoice.signedAt) {
+    return { ok: false, errors: { _root: "Cette facture a déjà été signée." } };
+  }
+  if (!input.name.trim()) {
+    return { ok: false, errors: { name: "Le nom est requis." } };
+  }
+  const parsedPng = parseSignaturePng(input.pngDataUrl);
+  if (!parsedPng.ok) {
+    return { ok: false, errors: { signature: SIGNATURE_ERROR_MESSAGES[parsedPng.reason] } };
+  }
+  const pngBuffer = parsedPng.buffer;
+
+  const unsignedInput = await buildInvoicePdfInput(db, storage, invoice.organizationId, invoice.id);
+  if (!unsignedInput) {
+    return { ok: false, errors: { _root: "Facture introuvable." } };
+  }
+  const unsignedBuffer = await renderDocumentPdf(unsignedInput);
+  const originalPdfHash = sha256Hex(unsignedBuffer);
+
+  const now = new Date();
+  const imageKey = `signatures/invoice-${invoice.id}.png`;
+  await storage.put(imageKey, pngBuffer, "image/png");
+  const imageDataUrl = `data:image/png;base64,${pngBuffer.toString("base64")}`;
+
+  const signedInput: DocumentPdfInput = {
+    ...unsignedInput,
+    signature: {
+      name: input.name.trim(),
+      email: input.email?.trim() || null,
+      signedAt: now,
+      imageDataUrl,
+      ip: input.ip ?? null,
+      originalPdfHash,
+    },
+  };
+  const signedBuffer = await renderDocumentPdf(signedInput);
+  const pdfHash = sha256Hex(signedBuffer);
+  const pdfSignedKey = `signed-invoices/${invoice.id}.pdf`;
+  await storage.put(pdfSignedKey, signedBuffer, "application/pdf");
+
+  try {
+    await db.insert(signatures).values({
+      invoiceId: invoice.id,
+      signerName: input.name.trim(),
+      signerEmail: input.email?.trim() || null,
+      imageKey,
+      ip: input.ip ?? null,
+      userAgent: input.userAgent ?? null,
+      signedAt: now,
+    });
+  } catch {
+    // Index unique invoice_id : filet de sécurité en cas de course
+    // concurrente (deux requêtes de signature simultanées).
+    return { ok: false, errors: { _root: "Cette facture a déjà été signée." } };
+  }
+
+  await db
+    .update(invoices)
+    .set({ signedAt: now, pdfSignedKey, pdfHash, updatedAt: now })
+    .where(eq(invoices.id, invoice.id));
+
+  await addDocumentEvent(db, {
+    organizationId: invoice.organizationId,
+    documentType: "invoice",
+    documentId: invoice.id,
+    eventType: "signed",
+    payload: { name: input.name.trim() },
+  });
+
+  const publicUrl = `${env.APP_URL}/p/factures/${token}`;
+  const organizationName =
+    unsignedInput.organization.tradeName ?? unsignedInput.organization.legalName;
+  const accentColor = unsignedInput.template.accentColor;
+  const documentNumber = invoice.number ?? "";
+  const pdfFilename = `facture-signee-${invoice.number ?? invoice.id}.pdf`;
+
+  if (invoice.clientEmail) {
+    await sendConfirmationAndLog(db, mailer, invoice.organizationId, "invoice", invoice.id, {
+      to: invoice.clientEmail,
+      organizationName,
+      accentColor,
+      documentKind: "invoice",
+      documentNumber,
+      clientName: invoice.clientName,
+      signerName: input.name.trim(),
+      forOrganization: false,
+      publicUrl,
+      pdfBuffer: signedBuffer,
+      pdfFilename,
+    });
+  }
+  if (unsignedInput.organization.email) {
+    await sendConfirmationAndLog(db, mailer, invoice.organizationId, "invoice", invoice.id, {
+      to: unsignedInput.organization.email,
+      organizationName,
+      accentColor,
+      documentKind: "invoice",
+      documentNumber,
+      clientName: invoice.clientName,
       signerName: input.name.trim(),
       forOrganization: true,
       publicUrl,

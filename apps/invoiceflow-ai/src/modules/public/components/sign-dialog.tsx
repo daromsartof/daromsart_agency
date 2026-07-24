@@ -14,16 +14,21 @@ import {
   Label,
   toast,
 } from "@daromsart/ui";
-import { signQuoteAction } from "@/modules/public/actions";
+import { signInvoiceAction, signQuoteAction } from "@/modules/public/actions";
 import { SignatureCanvas, type SignatureCanvasHandle } from "./signature-canvas";
 
 export interface SignDialogProps {
   token: string;
+  kind: "quote" | "invoice";
   defaultName?: string;
   defaultEmail?: string | null;
 }
 
-export function SignDialog({ token, defaultName, defaultEmail }: SignDialogProps) {
+export function SignDialog({ token, kind, defaultName, defaultEmail }: SignDialogProps) {
+  const noun = kind === "quote" ? "devis" : "facture";
+  const article = kind === "quote" ? "le" : "la";
+  const signedAdjective = kind === "quote" ? "signé" : "signée";
+  const action = kind === "quote" ? signQuoteAction : signInvoiceAction;
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(defaultName ?? "");
   const [email, setEmail] = useState(defaultEmail ?? "");
@@ -50,7 +55,7 @@ export function SignDialog({ token, defaultName, defaultEmail }: SignDialogProps
     }
 
     startTransition(async () => {
-      const result = await signQuoteAction(token, {
+      const result = await action(token, {
         name: name.trim(),
         email: email.trim() || undefined,
         pngDataUrl,
@@ -59,7 +64,7 @@ export function SignDialog({ token, defaultName, defaultEmail }: SignDialogProps
         setError(result.errors._root ?? "Échec de la signature.");
         return;
       }
-      toast.success("Devis signé.");
+      toast.success(`${kind === "quote" ? "Devis" : "Facture"} ${signedAdjective}.`);
       setOpen(false);
     });
   }
@@ -67,13 +72,13 @@ export function SignDialog({ token, defaultName, defaultEmail }: SignDialogProps
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="lg">Signer le devis</Button>
+        <Button size="lg">Signer {article} {noun}</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Signer le devis</DialogTitle>
+          <DialogTitle>Signer {article} {noun}</DialogTitle>
           <DialogDescription>
-            Votre signature électronique vaut acceptation des termes de ce devis.
+            Votre signature électronique vaut acceptation des termes de ce {noun}.
           </DialogDescription>
         </DialogHeader>
 
@@ -103,8 +108,8 @@ export function SignDialog({ token, defaultName, defaultEmail }: SignDialogProps
               checked={consent}
               onChange={(e) => setConsent(e.target.checked)}
             />
-            Je certifie avoir pris connaissance de ce devis et donne mon accord pour signature
-            électronique.
+            Je certifie avoir pris connaissance de {article === "le" ? "ce" : "cette"} {noun} et
+            donne mon accord pour signature électronique.
           </label>
 
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
