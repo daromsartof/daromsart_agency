@@ -85,6 +85,20 @@
       "when": 1784917277704,
       "tag": "0011_faulty_firebird",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1784919666878,
+      "tag": "0012_open_rumiko_fujikawa",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1784920136838,
+      "tag": "0013_qr_codes",
+      "breakpoints": true
     }
   ]
 }
