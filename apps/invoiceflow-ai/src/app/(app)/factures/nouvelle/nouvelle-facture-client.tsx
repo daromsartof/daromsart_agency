@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { PageHeader, toast } from "@daromsart/ui";
+import { ArrowLeft } from "lucide-react";
+import { Button, PageHeader, toast } from "@daromsart/ui";
 import {
   InvoiceCreateWizard,
   type InvoiceWizardTemplateOption,
@@ -40,6 +42,13 @@ export function NouvelleFactureClient({
   return (
     <>
       <PageHeader
+        back={
+          <Button asChild variant="ghost" size="icon" aria-label="Retour aux factures">
+            <Link href="/factures">
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+          </Button>
+        }
         title="Nouvelle facture"
         description="Créez une facture en quelques étapes : client, lignes, modèle, vérification."
       />
@@ -51,7 +60,7 @@ export function NouvelleFactureClient({
         onSubmit={(input) => createInvoiceAction(input)}
         onSuccess={(id) => {
           toast.success("Facture créée.");
-          if (id) router.push(`/factures/${id}/modifier`);
+          if (id) router.push(`/factures/${id}`);
         }}
       />
     </>

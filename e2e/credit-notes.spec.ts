@@ -27,11 +27,9 @@ test.describe("Avoirs", () => {
       description: "Prestation e2e avoir",
       unitPrice: "1000",
     });
-    await expect(page).toHaveURL(/\/factures\/.+\/modifier/, { timeout: 15_000 });
 
-    const invoiceId = page.url().match(/\/factures\/([^/]+)\/modifier/)?.[1];
+    const invoiceId = page.url().match(/\/factures\/([^/]+)$/)?.[1];
     expect(invoiceId).toBeTruthy();
-    await page.goto(`/factures/${invoiceId}`);
     await page.getByRole("button", { name: "Émettre sans envoyer" }).click();
     await expect(page.getByText(/^FAC-\d{4}-\d{4}$/)).toBeVisible({ timeout: 15_000 });
 

@@ -45,18 +45,23 @@ test.describe("Devis", () => {
     // Régression : Radix interdit `<SelectItem value="">` (throw au rendu du
     // popover) — le sentinel dédié (document-form.tsx) doit permettre
     // d'ouvrir et choisir ces menus sans crasher le formulaire.
-    await page.getByRole("combobox", { name: "Modèle" }).click();
-    await page.getByRole("option", { name: "Modèle par défaut" }).click();
-
     await page.getByRole("combobox", { name: "Remise globale" }).click();
     await page.getByRole("option", { name: "Pourcentage" }).click();
     await expect(page.getByRole("combobox", { name: "Remise globale" })).toHaveText(
       "Pourcentage",
     );
 
+    // Slider de modèles : sélection explicite d'une vignette.
+    await page.getByRole("button", { name: /Classique/ }).first().click();
+
     await page.getByRole("button", { name: "Créer le devis" }).click();
 
-    await expect(page).toHaveURL(/\/devis\/.+\/modifier/);
+    await expect(page).toHaveURL(/\/devis\/[0-9a-f-]{36}$/, { timeout: 15_000 });
+    await expect(page.locator('iframe[title="Aperçu PDF du devis"]')).toBeVisible();
+    await expect(page.getByRole("link", { name: "Modifier" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Envoyer" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Télécharger" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Archiver" })).toBeVisible();
 
     await page.goto("/devis");
     await expect(page.getByText("Nova Digital").first()).toBeVisible();

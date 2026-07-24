@@ -31,7 +31,12 @@ export default async function ModifierDevisPage({
   const templates = await listTemplates(db, organizationId);
   const quoteTemplates = templates
     .filter((t) => t.type === "quote" || t.type === "both")
-    .map((t) => ({ id: t.id, name: t.name, isDefault: t.isDefault }));
+    .map((t) => ({
+      id: t.id,
+      name: t.name,
+      isDefault: t.isDefault,
+      options: t.options,
+    }));
 
   return (
     <ModifierDevisClient

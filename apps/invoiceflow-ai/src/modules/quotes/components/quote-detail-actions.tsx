@@ -4,11 +4,13 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  Archive,
   ArrowRightLeft,
   Copy,
   Download,
   Mail,
   MoreHorizontal,
+  Pencil,
   Send,
   Trash2,
   XCircle,
@@ -75,7 +77,7 @@ export function QuoteDetailActions({
         return;
       }
       toast.success("Devis dupliqué.");
-      router.push(`/devis/${result.id}/modifier`);
+      router.push(`/devis/${result.id}`);
     });
   }
 
@@ -87,7 +89,7 @@ export function QuoteDetailActions({
         toast.error("Échec de la suppression.");
         return;
       }
-      toast.success("Devis supprimé.");
+      toast.success("Devis archivé.");
       router.push("/devis");
     });
   }
@@ -125,12 +127,24 @@ export function QuoteDetailActions({
   }
 
   const canRefuse = canTransition("quote", quote.status, "refused");
-  const alreadySent = quote.status !== "draft";
+  const isDraft = quote.status === "draft";
+  const alreadySent = !isDraft;
   const canConvert =
-    !quote.invoiceId && (quote.status === "signed" || quote.status === "sent" || quote.status === "viewed");
+    !quote.invoiceId &&
+    (quote.status === "signed" || quote.status === "sent" || quote.status === "viewed");
+  const pdfHref = `/api/documents/devis/${quote.id}/pdf`;
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
+      {isDraft ? (
+        <Button asChild size="sm" variant="outline">
+          <Link href={`/devis/${quote.id}/modifier`}>
+            <Pencil className="mr-2 h-4 w-4" />
+            Modifier
+          </Link>
+        </Button>
+      ) : null}
+
       <SendDialog
         trigger={
           <Button size="sm" disabled={pending}>
@@ -147,23 +161,39 @@ export function QuoteDetailActions({
         onSuccess={() => router.refresh()}
       />
 
-      {alreadySent ? (
-        <Button asChild size="sm" variant="outline">
-          <a href={`/api/documents/devis/${quote.id}/pdf`} target="_blank" rel="noreferrer">
-            <Download className="mr-2 h-4 w-4" />
-            {quote.status === "signed" ? "Télécharger le PDF signé" : "Télécharger le PDF"}
-          </a>
+      <Button asChild size="sm" variant="outline">
+        <a href={pdfHref} download target="_blank" rel="noreferrer">
+          <Download className="mr-2 h-4 w-4" />
+          Télécharger
+        </a>
+      </Button>
+
+      {isDraft ? (
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={pending}
+          onClick={() => setConfirmDelete(true)}
+        >
+          <Archive className="mr-2 h-4 w-4" />
+          Archiver
         </Button>
-      ) : (
-        <Button size="sm" variant="outline" disabled={pending} onClick={handleIssue}>
+      ) : canRefuse ? (
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={pending}
+          onClick={() => setConfirmRefuse(true)}
+        >
+          <Archive className="mr-2 h-4 w-4" />
+          Archiver
+        </Button>
+      ) : null}
+
+      {isDraft ? (
+        <Button size="sm" variant="ghost" disabled={pending} onClick={handleIssue}>
           <Send className="mr-2 h-4 w-4" />
           Émettre sans envoyer
-        </Button>
-      )}
-
-      {!alreadySent ? (
-        <Button asChild size="sm" variant="outline">
-          <Link href={`/devis/${quote.id}/modifier`}>Modifier</Link>
         </Button>
       ) : null}
 
@@ -198,13 +228,13 @@ export function QuoteDetailActions({
               Copier le lien public
             </DropdownMenuItem>
           ) : null}
-          {canRefuse ? (
+          {canRefuse && !isDraft ? (
             <DropdownMenuItem onSelect={() => setConfirmRefuse(true)}>
               <XCircle className="mr-2 h-4 w-4" />
               Marquer refusé
             </DropdownMenuItem>
           ) : null}
-          {!alreadySent ? (
+          {isDraft ? (
             <DropdownMenuItem onSelect={() => setConfirmDelete(true)}>
               <Trash2 className="mr-2 h-4 w-4" />
               Supprimer
@@ -216,18 +246,18 @@ export function QuoteDetailActions({
       <ConfirmDialog
         open={confirmDelete}
         onOpenChange={setConfirmDelete}
-        title="Supprimer ce devis ?"
-        description="Ce devis brouillon sera définitivement supprimé."
-        confirmLabel="Supprimer"
+        title="Archiver ce devis ?"
+        description="Ce devis brouillon sera définitivement retiré de la liste."
+        confirmLabel="Archiver"
         destructive
         onConfirm={handleDelete}
       />
       <ConfirmDialog
         open={confirmRefuse}
         onOpenChange={setConfirmRefuse}
-        title="Marquer ce devis comme refusé ?"
-        description="À utiliser si le client a refusé par un autre canal (téléphone, email)."
-        confirmLabel="Marquer refusé"
+        title="Archiver ce devis ?"
+        description="Le devis sera marqué comme refusé et ne pourra plus être modifié."
+        confirmLabel="Archiver"
         destructive
         onConfirm={handleRefuse}
       />

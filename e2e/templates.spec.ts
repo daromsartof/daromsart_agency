@@ -54,8 +54,6 @@ test.describe("Modèles", () => {
     await expect(page.getByText("défini par défaut")).toBeVisible();
 
     await page.goto("/devis/nouveau");
-    await expect(page.getByRole("combobox", { name: "Modèle" })).toContainText(
-      "Modèle e2e",
-    );
+    await expect(page.getByRole("button", { name: /Modèle e2e/ })).toBeVisible();
   });
 });
