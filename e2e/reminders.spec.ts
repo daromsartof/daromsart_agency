@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { completeInvoiceCreateWizard } from "./helpers/invoice-wizard";
 
 /**
  * Parcours critique relance manuelle (story 16). Nécessite une session
@@ -24,27 +25,24 @@ test.describe("Relance manuelle", () => {
     page,
   }) => {
     await page.goto("/factures/nouvelle");
-    await page.getByRole("combobox").first().click();
-    await page.getByPlaceholder("Rechercher un client…").fill("Nova");
-    await page.getByText("Nova Digital").click();
-    await page
-      .locator("input[placeholder='Description']")
-      .first()
-      .fill("Prestation e2e relance");
-    await page.locator("input[placeholder='Prix unitaire']").first().fill("300");
-
-    // Échéance dans le passé : la valeur par défaut est aujourd'hui + délai de
-    // paiement (org, 30 j) — reculer de 2 mois dans le calendrier garantit un
-    // mois entièrement passé quelle que soit la date du jour, puis choisir le
-    // 1er du mois (toujours antérieur à aujourd'hui dans ce mois-là).
-    const dueDateItem = page.getByText("Date d'échéance", { exact: true }).locator("..");
-    await dueDateItem.getByRole("button").click();
-    const previousMonth = page.getByRole("button", { name: /previous month/i });
-    await previousMonth.click();
-    await previousMonth.click();
-    await page.getByRole("gridcell", { name: "1", exact: true }).first().click();
-
-    await page.getByRole("button", { name: "Créer la facture" }).click();
+    await completeInvoiceCreateWizard(page, {
+      clientSearch: "Nova",
+      clientLabel: "Nova Digital",
+      description: "Prestation e2e relance",
+      unitPrice: "300",
+      afterClientSelect: async (page) => {
+        // Échéance dans le passé : la valeur par défaut est aujourd'hui + délai de
+        // paiement (org, 30 j) — reculer de 2 mois dans le calendrier garantit un
+        // mois entièrement passé quelle que soit la date du jour, puis choisir le
+        // 1er du mois (toujours antérieur à aujourd'hui dans ce mois-là).
+        const dueDateItem = page.getByText("Date d'échéance", { exact: true }).locator("..");
+        await dueDateItem.getByRole("button").click();
+        const previousMonth = page.getByRole("button", { name: /previous month/i });
+        await previousMonth.click();
+        await previousMonth.click();
+        await page.getByRole("gridcell", { name: "1", exact: true }).first().click();
+      },
+    });
     await expect(page).toHaveURL(/\/factures\/.+\/modifier/, { timeout: 15_000 });
 
     const invoiceId = page.url().match(/\/factures\/([^/]+)\/modifier/)?.[1];

@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import postgres from "postgres";
+import { completeInvoiceCreateWizard } from "./helpers/invoice-wizard";
 
 /**
  * Onglet Emails + bannière bounce (story 20). Le webhook Resend lui-même est
@@ -24,15 +25,12 @@ test.describe("Emails — historique et bannière bounce", () => {
     page,
   }) => {
     await page.goto("/factures/nouvelle");
-    await page.getByRole("combobox").first().click();
-    await page.getByPlaceholder("Rechercher un client…").fill("Nova");
-    await page.getByText("Nova Digital").click();
-    await page
-      .locator("input[placeholder='Description']")
-      .first()
-      .fill("Prestation e2e emails");
-    await page.locator("input[placeholder='Prix unitaire']").first().fill("1000");
-    await page.getByRole("button", { name: "Créer la facture" }).click();
+    await completeInvoiceCreateWizard(page, {
+      clientSearch: "Nova",
+      clientLabel: "Nova Digital",
+      description: "Prestation e2e emails",
+      unitPrice: "1000",
+    });
     await expect(page).toHaveURL(/\/factures\/.+\/modifier/, { timeout: 15_000 });
     const invoiceId = page.url().match(/\/factures\/([^/]+)\/modifier/)?.[1];
     expect(invoiceId).toBeTruthy();

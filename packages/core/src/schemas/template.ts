@@ -16,7 +16,7 @@ export const templateOptionsSchema = z.object({
   accentColor: z
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/, "Couleur invalide (format #RRGGBB).")
-    .default("#7367F0"),
+    .default("#185FA5"),
   showLogo: z.boolean().default(true),
   logoPosition: z.enum(["left", "right"]).default("left"),
   font: z.enum(["sans", "serif"]).default("sans"),

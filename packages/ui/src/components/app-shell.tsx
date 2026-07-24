@@ -8,7 +8,12 @@ import { cn } from "../lib/utils";
 import { initials } from "../lib/format";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Button } from "./ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetTrigger,
+} from "./ui/sheet";
 
 export interface NavItem {
   label: string;
@@ -125,13 +130,14 @@ function AppShell({
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
   return (
-    <div className="flex min-h-screen bg-background">
+    // h-svh + overflow-hidden : sidebar et topbar restent fixes ; seul <main> scroll.
+    <div className="flex h-svh overflow-hidden bg-background">
       {/* Sidebar desktop */}
-      <aside className="hidden w-64 shrink-0 flex-col border-r bg-card lg:flex">
-        <div className="flex h-16 items-center px-5">
-          {logo ?? <span className="text-lg font-semibold">InvoiceFlow</span>}
+      <aside className="hidden h-full w-64 shrink-0 flex-col border-r bg-card lg:flex">
+        <div className="flex h-16 shrink-0 items-center px-5">
+          {logo ?? <span className="text-lg font-semibold">Daromsart Système</span>}
         </div>
-        <div className="flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto">
           <SidebarNav
             sections={sections}
             activeHref={activeHref}
@@ -140,12 +146,13 @@ function AppShell({
         </div>
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        {/* Topbar */}
-        <header className="flex h-16 items-center gap-3 border-b bg-card px-4 sm:px-6">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        {/* Topbar fixe (ne scroll pas avec le contenu) */}
+        <header className="flex h-16 shrink-0 items-center gap-3 border-b bg-card px-4 sm:px-6">
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
               <Button
+                type="button"
                 variant="ghost"
                 size="icon"
                 className="lg:hidden"
@@ -154,18 +161,21 @@ function AppShell({
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-64 p-0">
-              <div className="flex h-16 items-center px-5">
+            <SheetContent side="left" className="flex w-64 flex-col p-0">
+              <SheetTitle className="sr-only">Navigation</SheetTitle>
+              <div className="flex h-16 shrink-0 items-center pr-12 pl-5">
                 {logo ?? (
-                  <span className="text-lg font-semibold">InvoiceFlow</span>
+                  <span className="text-lg font-semibold">Daromsart Système</span>
                 )}
               </div>
-              <SidebarNav
-                sections={sections}
-                activeHref={activeHref}
-                linkComponent={linkComponent}
-                onNavigate={() => setMobileOpen(false)}
-              />
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                <SidebarNav
+                  sections={sections}
+                  activeHref={activeHref}
+                  linkComponent={linkComponent}
+                  onNavigate={() => setMobileOpen(false)}
+                />
+              </div>
             </SheetContent>
           </Sheet>
 
@@ -173,7 +183,7 @@ function AppShell({
             {title}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             {topbarActions}
             {userMenu ?? (
               <Avatar>
@@ -183,7 +193,7 @@ function AppShell({
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+        <main className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
           <div className="mx-auto w-full max-w-[1440px]">{children}</div>
         </main>
       </div>

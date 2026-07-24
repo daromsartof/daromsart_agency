@@ -46,7 +46,7 @@ export function EmailLayout({
           <Hr style={{ borderColor: "#e4e4e7", margin: 0 }} />
           <Section style={{ padding: "16px 24px" }}>
             <Text style={{ color: "#a1a1aa", fontSize: "11px", margin: 0 }}>
-              Envoyé par {organizationName} via InvoiceFlow AI.
+              Envoyé par {organizationName} via Daromsart Système.
             </Text>
           </Section>
         </Container>

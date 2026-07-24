@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="280" height="180" viewBox="0 0 280 180">
+<style>@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500&amp;display=swap');</style>
+<g transform="translate(140,62) scale(0.9) translate(-33,-40)">
+    <ellipse cx="34" cy="37" rx="44" ry="19" fill="none" stroke="#1D9E75" stroke-width="2.6" transform="rotate(-24 34 37)"/>
+    <rect x="4" y="8" width="12" height="60" fill="#185FA5"/>
+    <path d="M20 8 L34 8 C61 8 78 21 78 38 C78 55 61 68 34 68 L20 68 L20 48 L32 48 C44 48 53 44 53 38 C53 32 44 28 32 28 L20 28 Z" fill="#185FA5"/>
+    <circle cx="74" cy="9" r="5.5" fill="#1D9E75"/>
+    <circle cx="-6" cy="65" r="3.6" fill="#1D9E75"/>
+  </g>
+<text x="140" y="132" text-anchor="middle" font-family="'Space Grotesk','Helvetica Neue',Arial,sans-serif" font-size="28" font-weight="500" fill="#042C53" letter-spacing="-0.4">Daroms&#8217;Art</text>
+<text x="140" y="154" text-anchor="middle" font-family="'Space Grotesk','Helvetica Neue',Arial,sans-serif" font-size="12" font-weight="400" letter-spacing="4.5" fill="#0F6E56">SYSTEMS</text>
+</svg>

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { completeInvoiceCreateWizard } from "./helpers/invoice-wizard";
 
 /**
  * Parcours critique avoirs (story 18). Une facture FRAÎCHE est créée à
@@ -20,15 +21,12 @@ test.describe("Avoirs", () => {
     page,
   }) => {
     await page.goto("/factures/nouvelle");
-    await page.getByRole("combobox").first().click();
-    await page.getByPlaceholder("Rechercher un client…").fill("Nova");
-    await page.getByText("Nova Digital").click();
-    await page
-      .locator("input[placeholder='Description']")
-      .first()
-      .fill("Prestation e2e avoir");
-    await page.locator("input[placeholder='Prix unitaire']").first().fill("1000");
-    await page.getByRole("button", { name: "Créer la facture" }).click();
+    await completeInvoiceCreateWizard(page, {
+      clientSearch: "Nova",
+      clientLabel: "Nova Digital",
+      description: "Prestation e2e avoir",
+      unitPrice: "1000",
+    });
     await expect(page).toHaveURL(/\/factures\/.+\/modifier/, { timeout: 15_000 });
 
     const invoiceId = page.url().match(/\/factures\/([^/]+)\/modifier/)?.[1];

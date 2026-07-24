@@ -76,6 +76,35 @@ export const daromsartPreset = {
           4: "hsl(var(--chart-4))",
           5: "hsl(var(--chart-5))",
         },
+        // Rampes de marque « Orbite » — hex fixes (ne changent pas entre
+        // thème clair/sombre, contrairement aux rôles sémantiques ci-dessus
+        // qui sont pilotés par les variables CSS). Un composant choisit le
+        // stop adapté au contexte (ex. `dark:text-blue-400` sur fond sombre).
+        blue: {
+          50: "#E6F1FB",
+          100: "#B5D4F4",
+          200: "#85B7EB",
+          400: "#378ADD",
+          600: "#185FA5",
+          800: "#0C447C",
+          900: "#042C53",
+        },
+        teal: {
+          50: "#E1F5EE",
+          100: "#9FE1CB",
+          200: "#5DCAA5",
+          400: "#1D9E75",
+          600: "#0F6E56",
+          800: "#085041",
+          900: "#04342C",
+        },
+        // Noms de marque directs (identité, cf. brief) — alias des mêmes stops.
+        brand: {
+          blue: "#185FA5",
+          "blue-light": "#378ADD",
+          navy: "#042C53",
+          space: "#050B1A",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -84,6 +113,7 @@ export const daromsartPreset = {
       },
       fontFamily: {
         sans: ["var(--font-sans)", ...defaultTheme.fontFamily.sans],
+        heading: ["var(--font-heading)", ...defaultTheme.fontFamily.sans],
         serif: ["var(--font-serif)", ...defaultTheme.fontFamily.serif],
       },
       keyframes: {

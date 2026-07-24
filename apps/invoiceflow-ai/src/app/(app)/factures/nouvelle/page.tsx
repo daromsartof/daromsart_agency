@@ -42,6 +42,7 @@ export default async function NouvelleFacturePage({
         id: t.id,
         name: t.name,
         isDefault: t.isDefault,
+        options: t.options,
       }))}
       defaultTemplateId={defaultTemplate?.id ?? ""}
     />

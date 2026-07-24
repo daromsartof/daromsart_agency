@@ -10,7 +10,7 @@ describe("templateOptionsSchema", () => {
   it("applique tous les defaults sur un objet vide", () => {
     const parsed = templateOptionsSchema.parse({});
     expect(parsed).toEqual({
-      accentColor: "#7367F0",
+      accentColor: "#185FA5",
       showLogo: true,
       logoPosition: "left",
       font: "sans",
@@ -62,6 +62,6 @@ describe("templateSchema", () => {
 
   it("accepte un modèle minimal et applique les defaults d'options", () => {
     const result = templateSchema.parse({ name: "Classique", type: "both", options: {} });
-    expect(result.options.accentColor).toBe("#7367F0");
+    expect(result.options.accentColor).toBe("#185FA5");
   });
 });

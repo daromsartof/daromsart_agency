@@ -24,46 +24,13 @@ import {
   setDefaultTemplateAction,
 } from "@/modules/templates/actions";
 import type { TemplateRow } from "@/modules/templates/queries";
+import { TemplateThumbnail } from "./template-thumbnail";
 
 const TYPE_LABEL: Record<TemplateRow["type"], string> = {
   quote: "Devis",
   invoice: "Facture",
   both: "Devis + Facture",
 };
-
-/**
- * Vignette = div stylisée simulant la 1re page (bandeau + mini-blocs), PAS
- * un vrai rendu PDF — coût de rendu inutile pour une simple grille (décision
- * story 09, `plans/story-09.md`).
- */
-function TemplateThumbnail({ template }: { template: TemplateRow }) {
-  return (
-    <div className="overflow-hidden rounded-md border bg-card">
-      <div className="h-2" style={{ backgroundColor: template.options.accentColor }} />
-      <div className="space-y-2 p-3">
-        <div
-          className={
-            template.options.logoPosition === "right"
-              ? "flex flex-row-reverse items-center justify-between"
-              : "flex items-center justify-between"
-          }
-        >
-          <div className="h-3 w-12 rounded bg-muted-foreground/30" />
-          <div className="h-4 w-10 rounded bg-muted-foreground/20" />
-        </div>
-        <div className="space-y-1">
-          <div className="h-2 w-full rounded bg-muted" />
-          <div className="h-2 w-4/5 rounded bg-muted" />
-          <div className="h-2 w-3/5 rounded bg-muted" />
-        </div>
-        <div
-          className="h-2 w-16 rounded"
-          style={{ backgroundColor: template.options.accentColor, opacity: 0.5 }}
-        />
-      </div>
-    </div>
-  );
-}
 
 export interface TemplatesGridProps {
   templates: TemplateRow[];
@@ -158,7 +125,13 @@ export function TemplatesGrid({ templates }: TemplatesGridProps) {
               </DropdownMenu>
             </CardHeader>
             <CardContent>
-              <TemplateThumbnail template={template} />
+              <Link
+                href={`/modeles/${template.id}`}
+                className="block transition-opacity hover:opacity-90"
+                aria-label={`Aperçu du modèle ${template.name}`}
+              >
+                <TemplateThumbnail options={template.options} />
+              </Link>
             </CardContent>
             <CardFooter>
               <Button asChild variant="outline" size="sm" className="w-full">

@@ -170,6 +170,11 @@ export {
   type NavItem,
   type NavSection,
 } from "./components/app-shell";
+export {
+  Stepper,
+  type StepperProps,
+  type StepperStep,
+} from "./components/stepper";
 
 // Ré-exports de types tiers utiles aux apps
 export type { ColumnDef } from "@tanstack/react-table";

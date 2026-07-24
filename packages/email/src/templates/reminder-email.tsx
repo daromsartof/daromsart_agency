@@ -28,13 +28,13 @@ export function ReminderEmail({ data }: { data: ReminderEmailData }) {
 
       <Section
         style={{
-          backgroundColor: "#fef3c7",
+          backgroundColor: "#FAEEDA",
           borderRadius: "6px",
           padding: "16px",
           margin: "16px 0",
         }}
       >
-        <Text style={{ fontSize: "12px", color: "#92400e", margin: "0 0 4px", fontWeight: "bold" }}>
+        <Text style={{ fontSize: "12px", color: "#854F0B", margin: "0 0 4px", fontWeight: "bold" }}>
           Facture {data.number} — en retard de {data.daysOverdue} jour{data.daysOverdue > 1 ? "s" : ""}
         </Text>
         <Text style={{ fontSize: "12px", color: "#71717a", margin: "0 0 4px" }}>

@@ -13,7 +13,7 @@ describe("parseEnv", () => {
     const env = parseEnv(base);
     expect(env.DATABASE_URL).toBe(base.DATABASE_URL);
     expect(env.STORAGE_DRIVER).toBe("fs");
-    expect(env.EMAIL_FROM).toContain("InvoiceFlow");
+    expect(env.EMAIL_FROM).toContain("Daromsart Système");
   });
 
   it("lève une erreur si une variable requise manque", () => {

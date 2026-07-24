@@ -10,7 +10,12 @@
 #   3. runner = sortie Next « standalone » uniquement (pas de node_modules complet).
 #
 # Pour dockeriser une NOUVELLE app : copier ce fichier dans apps/<app>/, et
-# remplacer les deux valeurs PROJECT / PROJECT_PATH ci-dessous.
+# remplacer les deux valeurs PROJECT / PROJECT_PATH ci-dessous. Si la nouvelle
+# app utilise aussi Drizzle + un bootstrap self-hosted (migrations + compte
+# admin au premier démarrage), reproduire le trio
+# `src/instrumentation.ts` + `src/db/startup.ts` + `src/db/bootstrap-admin.ts`
+# de invoiceflow-ai et garder la ligne `COPY .../drizzle` ci-dessous ; sinon
+# la supprimer.
 
 ARG NODE_VERSION=20-alpine
 ARG TURBO_VERSION=2.1.3
@@ -57,6 +62,11 @@ RUN addgroup --system --gid 1001 nodejs \
 COPY --from=builder --chown=nextjs:nodejs /app/apps/invoiceflow-ai/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/invoiceflow-ai/.next/static ./apps/invoiceflow-ai/.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/apps/invoiceflow-ai/public ./apps/invoiceflow-ai/public
+# Dossier de migrations SQL — lu au démarrage par `instrumentation.ts`
+# (`db/startup.ts`, API programmatique `drizzle-orm`, pas le CLI `drizzle-kit`
+# absent de cette image). Jamais tracé automatiquement par Next (pas importé
+# par une route), d'où la copie explicite.
+COPY --from=builder --chown=nextjs:nodejs /app/apps/invoiceflow-ai/drizzle ./apps/invoiceflow-ai/drizzle
 
 USER nextjs
 EXPOSE 3000

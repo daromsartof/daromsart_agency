@@ -118,7 +118,7 @@ export interface DocumentPdfInput {
 
 /** Options neutres par défaut (story 08 ; les vrais modèles arrivent en 09). */
 export const DEFAULT_PDF_TEMPLATE_OPTIONS: PdfTemplateOptions = {
-  accentColor: "#7367F0",
+  accentColor: "#185FA5",
   showLogo: true,
   logoPosition: "left",
   font: "sans",

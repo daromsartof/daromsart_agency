@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { completeInvoiceCreateWizard } from "./helpers/invoice-wizard";
 
 /**
  * Parcours critique envoi de facture par email + page publique (story 14).
@@ -21,15 +22,12 @@ test.describe("Envoi de facture", () => {
     browser,
   }) => {
     await page.goto("/factures/nouvelle");
-    await page.getByRole("combobox").first().click();
-    await page.getByPlaceholder("Rechercher un client…").fill("Nova");
-    await page.getByText("Nova Digital").click();
-    await page
-      .locator("input[placeholder='Description']")
-      .first()
-      .fill("Prestation envoi e2e");
-    await page.locator("input[placeholder='Prix unitaire']").first().fill("500");
-    await page.getByRole("button", { name: "Créer la facture" }).click();
+    await completeInvoiceCreateWizard(page, {
+      clientSearch: "Nova",
+      clientLabel: "Nova Digital",
+      description: "Prestation envoi e2e",
+      unitPrice: "500",
+    });
     await expect(page).toHaveURL(/\/factures\/.+\/modifier/, { timeout: 15_000 });
 
     const invoiceId = page.url().match(/\/factures\/([^/]+)\/modifier/)?.[1];

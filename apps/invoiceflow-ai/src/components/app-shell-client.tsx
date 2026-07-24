@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AppShell } from "@daromsart/ui";
@@ -22,8 +23,23 @@ export function AppShellClient({ user, children }: AppShellClientProps) {
       title={titleForPath(pathname)}
       linkComponent={Link}
       logo={
-        <Link href="/" className="text-lg font-semibold tracking-tight">
-          Invoice<span className="text-primary">Flow</span>
+        <Link href="/" aria-label="Daroms'Art Systems" className="inline-flex items-center">
+          <Image
+            src="/logo/lockup-horizontal-couleur.png"
+            alt="Daroms'Art Systems"
+            width={1200}
+            height={300}
+            priority
+            className="h-11 w-auto max-w-[180px] dark:hidden"
+          />
+          <Image
+            src="/logo/lockup-horizontal-inverse.png"
+            alt="Daroms'Art Systems"
+            width={1200}
+            height={300}
+            priority
+            className="hidden h-11 w-auto max-w-[180px] dark:block"
+          />
         </Link>
       }
       topbarActions={<ThemeToggle />}

@@ -17,7 +17,7 @@ export const envSchema = z.object({
   EMAIL_FROM: z
     .string()
     .min(1)
-    .default("InvoiceFlow <no-reply@example.com>"),
+    .default("Daromsart Système <no-reply@example.com>"),
 
   STORAGE_DRIVER: z.enum(["fs", "s3"]).default("fs"),
   STORAGE_BUCKET: z.string().optional().default(""),

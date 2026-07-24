@@ -1,9 +1,9 @@
 import { Suspense } from "react";
+import Image from "next/image";
 import {
   Card,
   CardContent,
   CardHeader,
-  CardTitle,
 } from "@daromsart/ui";
 import { LoginForm } from "./login-form";
 
@@ -12,11 +12,26 @@ export const metadata = { title: "Connexion" };
 export default function ConnexionPage() {
   return (
     <Card>
-      <CardHeader className="space-y-1 text-center">
-        <div className="text-xl font-semibold tracking-tight">
-          Invoice<span className="text-primary">Flow</span>
+      <CardHeader className="space-y-4 text-center">
+        {/* Lockup empilé — prévu pour l'écran de connexion (charte : ~200px). */}
+        <div className="flex justify-center">
+          <Image
+            src="/logo/lockup-empile-couleur.png"
+            alt="Daroms'Art Systems"
+            width={840}
+            height={540}
+            priority
+            className="h-auto w-[220px] dark:hidden"
+          />
+          <Image
+            src="/logo/lockup-empile-inverse.png"
+            alt="Daroms'Art Systems"
+            width={560}
+            height={360}
+            priority
+            className="hidden h-auto w-[220px] dark:block"
+          />
         </div>
-        <CardTitle className="text-lg">Bienvenue 👋</CardTitle>
         <p className="text-sm text-muted-foreground">
           Connectez-vous à votre espace
         </p>
