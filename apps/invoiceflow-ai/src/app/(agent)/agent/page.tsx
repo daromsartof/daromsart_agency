@@ -7,7 +7,7 @@ import { AgentChat } from "@/modules/agent/components/agent-chat";
 import { availableAgentModels, defaultAgentModel } from "@/modules/agent/provider";
 import type { AgentModelId } from "@/modules/agent/models";
 
-export const metadata = { title: "Mode agent" };
+export const metadata = { title: "Daroms Chat" };
 
 /** Nouvelle conversation (aucune ligne créée tant qu'aucun message n'est envoyé). */
 export default async function AgentNewPage() {

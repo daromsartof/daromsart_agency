@@ -3,7 +3,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bot } from "lucide-react";
 import { AppShell, Button } from "@daromsart/ui";
 import { navSections } from "@/config/nav";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -46,8 +45,14 @@ export function AppShellClient({ user, children }: AppShellClientProps) {
         <>
           <Button asChild variant="outline" size="sm" className="gap-2">
             <Link href="/agent">
-              <Bot className="h-4 w-4" />
-              <span className="hidden sm:inline">Mode agent</span>
+              <Image
+                src="/logo/qr-default-icon.png"
+                alt=""
+                width={64}
+                height={64}
+                className="h-4 w-4"
+              />
+              <span className="hidden sm:inline">Daroms Chat</span>
             </Link>
           </Button>
           <ThemeToggle />

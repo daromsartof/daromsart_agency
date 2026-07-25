@@ -15,7 +15,7 @@ import {
   isModelConfigured,
 } from "@/modules/agent/provider";
 
-export const metadata = { title: "Mode agent" };
+export const metadata = { title: "Daroms Chat" };
 
 /** Reprise d'une conversation existante (org+user-scopée). */
 export default async function AgentConversationPage({
