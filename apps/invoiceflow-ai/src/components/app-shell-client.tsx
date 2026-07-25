@@ -3,7 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { AppShell } from "@daromsart/ui";
+import { Bot } from "lucide-react";
+import { AppShell, Button } from "@daromsart/ui";
 import { navSections } from "@/config/nav";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UserMenu } from "@/components/user-menu";
@@ -41,7 +42,17 @@ export function AppShellClient({ user, children }: AppShellClientProps) {
           />
         </Link>
       }
-      topbarActions={<ThemeToggle />}
+      topbarActions={
+        <>
+          <Button asChild variant="outline" size="sm" className="gap-2">
+            <Link href="/agent">
+              <Bot className="h-4 w-4" />
+              <span className="hidden sm:inline">Mode agent</span>
+            </Link>
+          </Button>
+          <ThemeToggle />
+        </>
+      }
       userMenu={<UserMenu name={user?.name} email={user?.email} />}
     >
       {children}

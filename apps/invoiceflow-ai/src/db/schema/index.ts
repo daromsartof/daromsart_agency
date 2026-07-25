@@ -9,3 +9,4 @@ export * from "./signatures";
 export * from "./invoices";
 export * from "./signable-documents";
 export * from "./qr-codes";
+export * from "./agent";
