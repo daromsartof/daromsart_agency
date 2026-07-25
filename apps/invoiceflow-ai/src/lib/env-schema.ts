@@ -29,6 +29,10 @@ export const envSchema = z.object({
 
   SEED_ADMIN_EMAIL: z.string().email().optional(),
   SEED_ADMIN_PASSWORD: z.string().optional(),
+
+  // Copilote agent (mode agent). Vide = mode agent désactivé : la route de
+  // chat renvoie une erreur lisible (pattern RESEND_API_KEY, dev sans clé OK).
+  ANTHROPIC_API_KEY: z.string().optional().default(""),
 });
 
 export type Env = z.infer<typeof envSchema>;

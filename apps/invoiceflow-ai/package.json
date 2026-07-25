@@ -18,6 +18,8 @@
     "db:seed": "tsx src/db/seed.ts"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "4.0.20",
+    "@ai-sdk/react": "4.0.40",
     "@daromsart/auth": "workspace:*",
     "@daromsart/core": "workspace:*",
     "@daromsart/email": "workspace:*",
@@ -29,6 +31,7 @@
     "@hookform/resolvers": "3.9.0",
     "@react-email/render": "2.1.0",
     "@react-pdf/renderer": "4.5.1",
+    "ai": "7.0.37",
     "better-auth": "1.2.8",
     "drizzle-orm": "0.36.4",
     "lucide-react": "0.436.0",
@@ -44,7 +47,7 @@
     "recharts": "3.10.0",
     "server-only": "^0.0.1",
     "svix": "1.98.0",
-    "zod": "3.23.8"
+    "zod": "3.25.76"
   },
   "devDependencies": {
     "@daromsart/config": "workspace:*",

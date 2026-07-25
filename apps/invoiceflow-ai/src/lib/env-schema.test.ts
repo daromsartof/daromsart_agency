@@ -14,6 +14,7 @@ describe("parseEnv", () => {
     expect(env.DATABASE_URL).toBe(base.DATABASE_URL);
     expect(env.STORAGE_DRIVER).toBe("fs");
     expect(env.EMAIL_FROM).toContain("Daromsart Système");
+    expect(env.ANTHROPIC_API_KEY).toBe("");
   });
 
   it("lève une erreur si une variable requise manque", () => {

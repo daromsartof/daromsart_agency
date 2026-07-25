@@ -99,6 +99,13 @@
       "when": 1784920136838,
       "tag": "0013_qr_codes",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1784923426511,
+      "tag": "0014_smart_pepper_potts",
+      "breakpoints": true
     }
   ]
 }
