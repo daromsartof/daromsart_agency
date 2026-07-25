@@ -3,8 +3,9 @@ import type { UIMessage } from "ai";
 import { db } from "@/db";
 import { getCurrentOrganizationId, requireSession } from "@/modules/auth/session";
 import { listConversations } from "@/modules/agent/queries";
-import { DEFAULT_AGENT_MODEL } from "@/modules/agent/models";
 import { AgentChat } from "@/modules/agent/components/agent-chat";
+import { availableAgentModels, defaultAgentModel } from "@/modules/agent/provider";
+import type { AgentModelId } from "@/modules/agent/models";
 
 export const metadata = { title: "Mode agent" };
 
@@ -17,12 +18,14 @@ export default async function AgentNewPage() {
   }
 
   const conversations = await listConversations(db, organizationId, session.user.id);
+  const available = availableAgentModels();
 
   return (
     <AgentChat
       initialMessages={[] as UIMessage[]}
       conversations={conversations}
-      defaultModel={DEFAULT_AGENT_MODEL}
+      defaultModel={defaultAgentModel()}
+      availableModelIds={available.map((m) => m.id as AgentModelId)}
     />
   );
 }

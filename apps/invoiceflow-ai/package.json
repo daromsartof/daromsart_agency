@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@ai-sdk/anthropic": "4.0.20",
+    "@ai-sdk/google": "4.0.20",
     "@ai-sdk/react": "4.0.40",
     "@daromsart/auth": "workspace:*",
     "@daromsart/core": "workspace:*",

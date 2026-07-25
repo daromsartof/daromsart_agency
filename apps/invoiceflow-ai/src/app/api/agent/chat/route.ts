@@ -2,12 +2,19 @@ import { convertToModelMessages, stepCountIs, streamText, type UIMessage } from 
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { getCurrentOrganizationId, getSession } from "@/modules/auth/session";
-import { DEFAULT_AGENT_MODEL, isAgentModel } from "@/modules/agent/models";
+import { isAgentModel } from "@/modules/agent/models";
 import { replaceMessages } from "@/modules/agent/mutations";
 import { getConversation } from "@/modules/agent/queries";
-import { SYSTEM_PROMPT, isAgentEnabled, resolveModel } from "@/modules/agent/provider";
+import { createAgentTools } from "@/modules/agent/tools";
+import {
+  SYSTEM_PROMPT,
+  defaultAgentModel,
+  isAgentEnabled,
+  isModelConfigured,
+  resolveModel,
+} from "@/modules/agent/provider";
 
-// L'AI SDK + provider Anthropic utilisent des API Node (streams, crypto) et la
+// L'AI SDK + providers utilisent des API Node (streams, crypto) et la
 // couche outils (stories suivantes) touchera Drizzle/Postgres → runtime Node.
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -16,6 +23,19 @@ interface ChatRequestBody {
   messages?: UIMessage[];
   conversationId?: string;
   model?: string;
+}
+
+function parseClientError(raw: string): string {
+  try {
+    const json = JSON.parse(raw) as { error?: unknown };
+    if (typeof json.error === "string" && json.error.trim()) return json.error;
+  } catch {
+    // texte brut
+  }
+  const trimmed = raw.trim();
+  return trimmed.length > 0 && trimmed.length < 400
+    ? trimmed
+    : "Échec de l'appel au modèle.";
 }
 
 export async function POST(req: Request) {
@@ -29,12 +49,21 @@ export async function POST(req: Request) {
   }
   if (!isAgentEnabled()) {
     return NextResponse.json(
-      { error: "Le mode agent n'est pas configuré (ANTHROPIC_API_KEY manquante)." },
+      {
+        error:
+          "Le mode agent n'est pas configuré. Ajoutez GOOGLE_GENERATIVE_AI_API_KEY (Gemini gratuit) ou ANTHROPIC_API_KEY dans .env.",
+      },
       { status: 503 },
     );
   }
 
-  const body = (await req.json()) as ChatRequestBody;
+  let body: ChatRequestBody;
+  try {
+    body = (await req.json()) as ChatRequestBody;
+  } catch {
+    return NextResponse.json({ error: "Corps de requête invalide." }, { status: 400 });
+  }
+
   const messages = body.messages ?? [];
   const { conversationId } = body;
   if (!conversationId) {
@@ -52,23 +81,71 @@ export async function POST(req: Request) {
       ? body.model
       : isAgentModel(conversation.model)
         ? conversation.model
-        : DEFAULT_AGENT_MODEL;
+        : defaultAgentModel();
+
+  if (!isModelConfigured(model)) {
+    const hint =
+      model.startsWith("gemini")
+        ? "GOOGLE_GENERATIVE_AI_API_KEY"
+        : "ANTHROPIC_API_KEY";
+    return NextResponse.json(
+      { error: `Le modèle ${model} nécessite ${hint} dans .env.` },
+      { status: 503 },
+    );
+  }
 
   // Persiste le tour entrant AVANT le stream : le message utilisateur survit à
   // un échec de l'appel modèle. `onEnd` réécrit ensuite avec la réponse incluse.
-  await replaceMessages(db, conversationId, messages);
+  try {
+    await replaceMessages(db, conversationId, messages);
+  } catch (err) {
+    console.error("[agent/chat] replaceMessages (pre-stream)", err);
+    return NextResponse.json(
+      { error: "Impossible d'enregistrer le message." },
+      { status: 500 },
+    );
+  }
 
-  const result = streamText({
-    model: resolveModel(model),
-    system: SYSTEM_PROMPT,
-    messages: await convertToModelMessages(messages),
-    stopWhen: stepCountIs(1),
-  });
+  let modelMessages;
+  try {
+    modelMessages = await convertToModelMessages(messages);
+  } catch (err) {
+    console.error("[agent/chat] convertToModelMessages", err);
+    return NextResponse.json(
+      { error: "Messages de conversation invalides." },
+      { status: 400 },
+    );
+  }
 
-  return result.toUIMessageStreamResponse({
-    originalMessages: messages,
-    onEnd: async ({ messages: finalMessages }) => {
-      await replaceMessages(db, conversationId, finalMessages);
-    },
-  });
+  try {
+    const result = streamText({
+      model: resolveModel(model),
+      system: SYSTEM_PROMPT,
+      messages: modelMessages,
+      tools: createAgentTools(db, organizationId),
+      // Boucle agentique : outil → résultat → réponse (ou nouvel outil). Borné
+      // pour éviter les boucles infinies. `askUser` (sans execute) suspend le
+      // stream jusqu'à la réponse humaine côté client (addToolResult).
+      stopWhen: stepCountIs(6),
+      onError: ({ error }) => {
+        console.error("[agent/chat] streamText", error);
+      },
+    });
+
+    return result.toUIMessageStreamResponse({
+      originalMessages: messages,
+      onEnd: async ({ messages: finalMessages }) => {
+        try {
+          await replaceMessages(db, conversationId, finalMessages);
+        } catch (err) {
+          console.error("[agent/chat] replaceMessages (onEnd)", err);
+        }
+      },
+    });
+  } catch (err) {
+    console.error("[agent/chat] setup", err);
+    const message =
+      err instanceof Error ? parseClientError(err.message) : "Échec de l'appel au modèle.";
+    return NextResponse.json({ error: message }, { status: 502 });
+  }
 }

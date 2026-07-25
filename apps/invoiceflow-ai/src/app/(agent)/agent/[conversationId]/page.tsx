@@ -7,8 +7,13 @@ import {
   getConversationMessages,
   listConversations,
 } from "@/modules/agent/queries";
-import { DEFAULT_AGENT_MODEL, isAgentModel } from "@/modules/agent/models";
+import { isAgentModel, type AgentModelId } from "@/modules/agent/models";
 import { AgentChat } from "@/modules/agent/components/agent-chat";
+import {
+  availableAgentModels,
+  defaultAgentModel,
+  isModelConfigured,
+} from "@/modules/agent/provider";
 
 export const metadata = { title: "Mode agent" };
 
@@ -39,14 +44,20 @@ export default async function AgentConversationPage({
     listConversations(db, organizationId, session.user.id),
   ]);
 
-  const defaultModel = isAgentModel(conversation.model) ? conversation.model : DEFAULT_AGENT_MODEL;
+  const preferred =
+    isAgentModel(conversation.model) && isModelConfigured(conversation.model)
+      ? conversation.model
+      : defaultAgentModel();
+
+  const available = availableAgentModels();
 
   return (
     <AgentChat
       conversationId={conversation.id}
       initialMessages={messages as unknown as UIMessage[]}
       conversations={conversations}
-      defaultModel={defaultModel}
+      defaultModel={preferred}
+      availableModelIds={available.map((m) => m.id as AgentModelId)}
     />
   );
 }

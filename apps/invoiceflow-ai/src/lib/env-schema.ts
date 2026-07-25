@@ -30,9 +30,11 @@ export const envSchema = z.object({
   SEED_ADMIN_EMAIL: z.string().email().optional(),
   SEED_ADMIN_PASSWORD: z.string().optional(),
 
-  // Copilote agent (mode agent). Vide = mode agent désactivé : la route de
-  // chat renvoie une erreur lisible (pattern RESEND_API_KEY, dev sans clé OK).
+  // Copilote agent (mode agent). Vide = provider désactivé.
+  // Au moins une des deux clés doit être renseignée pour activer le chat.
   ANTHROPIC_API_KEY: z.string().optional().default(""),
+  // Clé Google AI Studio / Gemini (free tier) — https://aistudio.google.com/apikey
+  GOOGLE_GENERATIVE_AI_API_KEY: z.string().optional().default(""),
 });
 
 export type Env = z.infer<typeof envSchema>;

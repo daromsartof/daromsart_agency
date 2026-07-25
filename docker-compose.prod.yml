@@ -44,8 +44,9 @@ services:
       RESEND_WEBHOOK_SECRET: ${RESEND_WEBHOOK_SECRET:-}
       EMAIL_FROM: ${EMAIL_FROM:-Daromsart Système <no-reply@example.com>}
       STORAGE_DRIVER: ${STORAGE_DRIVER:-fs}
-      # Copilote agent (mode agent) — vide = désactivé.
+      # Copilote agent — au moins une clé. Vide = désactivé.
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GOOGLE_GENERATIVE_AI_API_KEY: ${GOOGLE_GENERATIVE_AI_API_KEY:-}
       # Compte administrateur créé automatiquement au premier démarrage
       # (migrations + bootstrap, voir `src/instrumentation.ts`) — sans effet
       # si un administrateur existe déjà (idempotent, y compris après un
