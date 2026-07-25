@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useChat } from "@ai-sdk/react";
 import {
@@ -10,7 +11,7 @@ import {
 } from "ai";
 import { ToolPart, isRenderableToolPart, type RenderableToolPart } from "./tool-parts";
 import { MessageContent } from "./message-content";
-import { ArrowLeft, Bot, Loader2, Plus, SendHorizontal } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, SendHorizontal } from "lucide-react";
 import {
   Button,
   Select,
@@ -273,9 +274,16 @@ export function AgentChat({
     <div className="flex h-svh overflow-hidden bg-background">
       {/* Historique */}
       <aside className="hidden w-64 shrink-0 flex-col border-r bg-card md:flex">
-        <div className="flex h-16 shrink-0 items-center gap-2 px-4">
-          <Bot className="h-5 w-5 text-primary" />
-          <span className="font-heading font-medium">Copilote</span>
+        <div className="flex h-16 shrink-0 items-center gap-2.5 px-4">
+          <Image
+            src="/logo/qr-default-icon.png"
+            alt=""
+            width={128}
+            height={128}
+            className="h-8 w-8"
+            priority
+          />
+          <span className="font-heading text-base font-medium tracking-tight">Daroms Chat</span>
         </div>
         <div className="px-3">
           <Button asChild variant="outline" className="w-full justify-start">
@@ -306,7 +314,7 @@ export function AgentChat({
           <Button asChild variant="ghost" className="w-full justify-start">
             <Link href="/">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Quitter le mode agent
+              Quitter Daroms Chat
             </Link>
           </Button>
         </div>
@@ -350,7 +358,13 @@ export function AgentChat({
 
             {messages.length === 0 && availableModelIds.length > 0 ? (
               <div className="mt-16 text-center text-muted-foreground">
-                <Bot className="mx-auto mb-3 h-10 w-10 text-primary/60" />
+                <Image
+                  src="/logo/qr-default-icon.png"
+                  alt=""
+                  width={160}
+                  height={160}
+                  className="mx-auto mb-3 h-12 w-12"
+                />
                 <p className="font-heading text-lg">Comment puis-je aider ?</p>
                 <p className="mt-1 text-sm">
                   Posez une question ou demandez de découper une fonctionnalité en stories.

@@ -8,6 +8,11 @@ import { getConversation } from "@/modules/agent/queries";
 import { createAgentTools } from "@/modules/agent/tools";
 import { fillMissingToolResults } from "@/modules/agent/message-sanitize";
 import {
+  preparePromptUiMessages,
+  pruneModelContext,
+  pruneStepContext,
+} from "@/modules/agent/prepare-prompt-context";
+import {
   SYSTEM_PROMPT,
   defaultAgentModel,
   isAgentEnabled,
@@ -103,14 +108,13 @@ export async function POST(req: Request) {
     );
   }
 
-  // Comble tout tool-call resté sans résultat (ex. `askUser` laissé de côté)
-  // pour ne jamais planter avec MissingToolResultsError : l'agent redemande ou
-  // enchaîne plutôt que d'afficher une erreur.
-  const promptMessages = fillMissingToolResults(messages);
+  // Fenêtre prompt allégée (dédup, trim, compact tools) — la DB garde tout.
+  // Puis comble les tool-calls orphelins pour éviter MissingToolResultsError.
+  const promptMessages = fillMissingToolResults(preparePromptUiMessages(messages));
 
   let modelMessages;
   try {
-    modelMessages = await convertToModelMessages(promptMessages);
+    modelMessages = pruneModelContext(await convertToModelMessages(promptMessages));
   } catch (err) {
     console.error("[agent/chat] convertToModelMessages", err);
     return NextResponse.json(
@@ -125,10 +129,15 @@ export async function POST(req: Request) {
       system: SYSTEM_PROMPT,
       messages: modelMessages,
       tools: createAgentTools(db, organizationId),
-      // Boucle agentique : outil → résultat → réponse (ou nouvel outil). Borné
-      // pour éviter les boucles infinies. `askUser` (sans execute) suspend le
-      // stream jusqu'à la réponse humaine côté client (addToolResult).
-      stopWhen: stepCountIs(6),
+      // Boucle agentique bornée (tokens + latence). askUser / propose* suspendent
+      // jusqu'à la réponse humaine (addToolResult côté client).
+      stopWhen: stepCountIs(4),
+      // Cappe la longueur des réponses texte (l'UI porte déjà les données outils).
+      maxOutputTokens: 1024,
+      prepareStep: async ({ messages: stepMessages, stepNumber }) => {
+        if (stepNumber === 0) return {};
+        return { messages: pruneStepContext(stepMessages) };
+      },
       onError: ({ error }) => {
         console.error("[agent/chat] streamText", error);
       },
