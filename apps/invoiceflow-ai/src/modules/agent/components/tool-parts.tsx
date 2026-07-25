@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, MessageCircleQuestion } from "lucide-react";
+import { Download, ExternalLink, Loader2, MessageCircleQuestion } from "lucide-react";
 import {
   Badge,
   Button,
@@ -18,9 +18,11 @@ import {
 import type {
   ClientsToolOutput,
   DashboardStatsOutput,
+  InvoiceDetailToolOutput,
   InvoicesToolOutput,
   QuotesToolOutput,
 } from "../tool-types";
+import { ConfirmActionCard } from "./confirm-action-card";
 
 /**
  * Un part d'outil tel qu'exposé à l'exécution par l'AI SDK. Le type statique
@@ -52,19 +54,30 @@ const TOOL_LOADING_LABEL: Record<string, string> = {
   listInvoices: "Recherche des factures…",
   listQuotes: "Recherche des devis…",
   getDashboardStats: "Lecture des indicateurs…",
+  getInvoiceDetail: "Chargement de la facture…",
 };
 
 export interface ToolPartProps {
   part: RenderableToolPart;
   onAnswer: (toolCallId: string, answer: string) => void;
   answerable: boolean;
+  /** Demande le détail PDF d'une facture (relance le chat). */
+  onOpenInvoice?: (ref: { id: string; number: string | null }) => void;
+  /** Confirme/annule une action écrite proposée (story 28). */
+  onConfirm?: (part: RenderableToolPart, confirmed: boolean) => Promise<void> | void;
 }
 
-export function ToolPart({ part, onAnswer, answerable }: ToolPartProps) {
+export function ToolPart({ part, onAnswer, answerable, onOpenInvoice, onConfirm }: ToolPartProps) {
   const name = toolName(part);
 
   if (name === "askUser") {
     return <AskUserCard part={part} onAnswer={onAnswer} answerable={answerable} />;
+  }
+
+  // Outils d'écriture (sans execute) : carte de confirmation, jamais un
+  // spinner « recherche » — à traiter AVANT le cas générique input-available.
+  if (name === "proposeCreateClient") {
+    return <ConfirmActionCard part={part} onConfirm={onConfirm} answerable={answerable} />;
   }
 
   if (part.state === "input-streaming" || part.state === "input-available") {
@@ -87,11 +100,19 @@ export function ToolPart({ part, onAnswer, answerable }: ToolPartProps) {
       case "listClients":
         return <ClientsResult data={part.output as ClientsToolOutput} />;
       case "listInvoices":
-        return <InvoicesResult data={part.output as InvoicesToolOutput} />;
+        return (
+          <InvoicesResult
+            data={part.output as InvoicesToolOutput}
+            onOpenInvoice={onOpenInvoice}
+            openable={answerable}
+          />
+        );
       case "listQuotes":
         return <QuotesResult data={part.output as QuotesToolOutput} />;
       case "getDashboardStats":
         return <DashboardStatsResult data={part.output as DashboardStatsOutput} />;
+      case "getInvoiceDetail":
+        return <InvoiceDetailResult data={part.output as InvoiceDetailToolOutput} />;
       default:
         return null;
     }
@@ -141,7 +162,15 @@ function ClientsResult({ data }: { data: ClientsToolOutput }) {
   );
 }
 
-function InvoicesResult({ data }: { data: InvoicesToolOutput }) {
+function InvoicesResult({
+  data,
+  onOpenInvoice,
+  openable,
+}: {
+  data: InvoicesToolOutput;
+  onOpenInvoice?: (ref: { id: string; number: string | null }) => void;
+  openable?: boolean;
+}) {
   return (
     <ResultCard title="Factures" count={data.total}>
       <Table>
@@ -153,6 +182,7 @@ function InvoicesResult({ data }: { data: InvoicesToolOutput }) {
             <TableHead className="text-right">Total</TableHead>
             <TableHead className="text-right">Reste dû</TableHead>
             <TableHead>Échéance</TableHead>
+            {onOpenInvoice ? <TableHead className="text-right">PDF</TableHead> : null}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -166,6 +196,19 @@ function InvoicesResult({ data }: { data: InvoicesToolOutput }) {
               <TableCell className="text-right tabular-nums">{i.total}</TableCell>
               <TableCell className="text-right tabular-nums">{i.reste}</TableCell>
               <TableCell className="text-muted-foreground">{i.echeance ?? "—"}</TableCell>
+              {onOpenInvoice ? (
+                <TableCell className="text-right">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    disabled={!openable}
+                    onClick={() => onOpenInvoice({ id: i.id, number: i.number })}
+                  >
+                    Voir
+                  </Button>
+                </TableCell>
+              ) : null}
             </TableRow>
           ))}
         </TableBody>
@@ -229,6 +272,63 @@ function DashboardStatsResult({ data }: { data: DashboardStatsOutput }) {
         value={data.enRetard}
       />
     </div>
+  );
+}
+
+function InvoiceDetailResult({ data }: { data: InvoiceDetailToolOutput }) {
+  if (!data.found || !data.pdfUrl) {
+    return (
+      <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        {data.message ?? "Facture introuvable."}
+      </div>
+    );
+  }
+
+  return (
+    <Card className="w-full max-w-2xl overflow-hidden">
+      <CardHeader className="space-y-3 py-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 space-y-1">
+            <CardTitle className="text-sm">
+              {data.number ?? "Facture"}{" "}
+              <span className="font-normal text-muted-foreground">· {data.clientName}</span>
+            </CardTitle>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <Badge variant="outline">{data.status}</Badge>
+              {data.total ? <span>Total {data.total}</span> : null}
+              {data.reste ? <span>Reste {data.reste}</span> : null}
+              {data.dueDate ? <span>Échéance {data.dueDate}</span> : null}
+            </div>
+          </div>
+          <div className="flex shrink-0 flex-wrap gap-2">
+            <Button asChild size="sm" variant="outline">
+              <a href={data.pdfUrl} target="_blank" rel="noreferrer">
+                <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                Ouvrir
+              </a>
+            </Button>
+            <Button asChild size="sm">
+              <a
+                href={`${data.pdfUrl}${data.pdfUrl.includes("?") ? "&" : "?"}download=1`}
+                download={data.pdfFilename ?? "facture.pdf"}
+              >
+                <Download className="mr-1.5 h-3.5 w-3.5" />
+                Télécharger
+              </a>
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="p-0">
+        <div className="border-t bg-muted/20">
+          <iframe
+            title={`Aperçu ${data.number ?? "facture"}`}
+            src={data.pdfUrl}
+            className="h-[min(70vh,720px)] w-full bg-background"
+          />
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

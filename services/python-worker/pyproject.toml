@@ -7,10 +7,12 @@ dependencies = [
   "fastapi>=0.115,<0.116",
   "uvicorn[standard]>=0.31,<0.32",
   "pydantic-settings>=2.5,<3",
+  # Proxy streaming vers Ollama (routers/ollama.py) — runtime, plus seulement dev.
+  "httpx>=0.27,<0.28",
 ]
 
 [dependency-groups]
-dev = ["pytest>=8.3,<9", "httpx>=0.27,<0.28", "ruff>=0.6,<0.7"]
+dev = ["pytest>=8.3,<9", "ruff>=0.6,<0.7"]
 
 [tool.ruff]
 line-length = 100

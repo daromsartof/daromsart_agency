@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     # local uniquement). En prod/self-hosted, toujours renseigner WORKER_API_KEY.
     api_key: str | None = None
 
+    # Base de l'API Ollama locale (GPU). Le worker relaie l'app Next vers ce
+    # serveur (voir routers/ollama.py). WORKER_OLLAMA_BASE_URL pour surcharger.
+    ollama_base_url: str = "http://localhost:11434"
+
     @field_validator("api_key")
     @classmethod
     def _blank_key_means_disabled(cls, value: str | None) -> str | None:

@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from app.routers import example
+from app.routers import example, ollama
 
 app = FastAPI(
     title="Daromsart python-worker",
@@ -9,6 +9,8 @@ app = FastAPI(
 )
 
 app.include_router(example.router)
+# Proxy LLM local (Ollama/GPU) — 4ᵉ provider du mode agent.
+app.include_router(ollama.router)
 
 
 @app.get("/health")

@@ -3,12 +3,13 @@ import { z } from "zod";
 import type { InvoiceStatus, QuoteStatus } from "@daromsart/core";
 import type { AppDb } from "../../db/types";
 import { listClients } from "../clients/queries";
-import { listInvoices } from "../invoices/queries";
+import { getInvoiceById, listInvoices } from "../invoices/queries";
 import { listQuotes } from "../quotes/queries";
 import { getCashflowStats, getEncoursStats } from "../dashboard/queries";
 import type {
   ClientsToolOutput,
   DashboardStatsOutput,
+  InvoiceDetailToolOutput,
   InvoicesToolOutput,
   QuotesToolOutput,
 } from "./tool-types";
@@ -161,6 +162,74 @@ export function createAgentTools(db: AppDb, organizationId: string): ToolSet {
       },
     }),
 
+    getInvoiceDetail: tool({
+      description:
+        "Détail d'UNE facture avec aperçu PDF. À utiliser quand l'utilisateur consulte une facture précise (par id ou numéro, ex. FAC-2026-0072). Affiche le PDF dans le chat.",
+      inputSchema: z.object({
+        invoiceId: z.string().optional().describe("UUID de la facture (si connu)"),
+        number: z
+          .string()
+          .optional()
+          .describe("Numéro de facture (ex. FAC-2026-0072)"),
+      }),
+      execute: async ({ invoiceId, number }): Promise<InvoiceDetailToolOutput> => {
+        let id = invoiceId?.trim() || null;
+        if (!id && number?.trim()) {
+          const res = await listInvoices(db, {
+            organizationId,
+            status: "all",
+            q: number.trim(),
+            page: 1,
+            pageSize: 10,
+          });
+          const exact = res.items.find(
+            (i) => i.number?.toLowerCase() === number.trim().toLowerCase(),
+          );
+          id = (exact ?? res.items[0])?.id ?? null;
+        }
+        if (!id) {
+          return {
+            found: false,
+            message: "Indiquez un numéro ou un id de facture.",
+          };
+        }
+
+        const invoice = await getInvoiceById(db, organizationId, id);
+        if (!invoice) {
+          return { found: false, message: "Facture introuvable." };
+        }
+
+        const lineTotal = (qty: number, unitCents: number, vat: number) => {
+          const ht = Math.round(qty * unitCents);
+          return money(Math.round(ht * (1 + vat / 100)));
+        };
+
+        const filename = `${invoice.number ?? `facture-${invoice.id}`}.pdf`;
+        return {
+          found: true,
+          id: invoice.id,
+          number: invoice.number,
+          clientName: invoice.clientName,
+          status: invoice.status,
+          issueDate: date(invoice.issueDate),
+          dueDate: date(invoice.dueDate),
+          subtotal: money(invoice.subtotalCents),
+          total: money(invoice.totalCents),
+          reste: money(invoice.totalCents - invoice.amountPaidCents),
+          notes: invoice.notes,
+          lines: invoice.lines.map((l) => ({
+            description: l.description,
+            quantity: l.quantity,
+            unitPrice: money(l.unitPriceCents),
+            vatRate: l.vatRate,
+            total: lineTotal(l.quantity, l.unitPriceCents, l.vatRate),
+          })),
+          pdfUrl: `/api/documents/factures/${invoice.id}/pdf`,
+          pdfFilename: filename,
+        };
+      },
+    }),
+
     askUser: tool({
       description:
         "Pose une question à l'utilisateur quand une information manque pour continuer. Fournis 2 à 6 `options` cliquables si un choix fermé est possible. Attends la réponse avant de poursuivre.",
@@ -175,6 +244,25 @@ export function createAgentTools(db: AppDb, organizationId: string): ToolSet {
       }),
       // Pas d'`execute` : outil résolu par l'HUMAIN (carte cliquable côté client
       // → `addToolResult`), pas par le serveur.
+    }),
+
+    proposeCreateClient: tool({
+      description:
+        "PROPOSE la création d'un client — N'ÉCRIT RIEN. L'utilisateur doit confirmer dans le chat (carte Confirmer/Annuler) avant toute écriture. Fournis au moins `type` et `displayName`.",
+      inputSchema: z.object({
+        type: z.string().describe("'company' (entreprise) ou 'individual' (particulier)"),
+        displayName: z.string().min(1).describe("Nom affiché du client"),
+        email: z.string().optional(),
+        phone: z.string().optional(),
+        siret: z.string().optional(),
+        vatNumber: z.string().optional(),
+        addressStreet: z.string().optional(),
+        addressZip: z.string().optional(),
+        addressCity: z.string().optional(),
+      }),
+      // Pas d'`execute` : l'ÉCRITURE est déclenchée par le clic « Confirmer »
+      // côté client (createClientAction, avec auth + validation zod serveur),
+      // jamais automatiquement par le modèle.
     }),
   };
 }

@@ -163,6 +163,34 @@ authentification par clé API (header `X-API-Key`, variable `WORKER_API_KEY`),
 un endpoint `/health` public (sondes/healthcheck) et un endpoint d'exemple
 `POST /v1/echo` protégé, à remplacer par la vraie logique métier.
 
+### IA locale (Ollama) — 4ᵉ provider du mode agent
+
+Le worker sert aussi de **proxy vers une IA locale** (Ollama sur GPU), utilisée
+comme 4ᵉ provider LLM du mode agent — **sans clé API ni coût**. Le worker expose
+`POST /v1/chat/completions` (compatible OpenAI, streaming) qui relaie vers Ollama
+(`WORKER_OLLAMA_BASE_URL`, défaut `http://localhost:11434`) ; l'app Next.js pointe
+son provider OpenAI sur le worker via `OLLAMA_WORKER_URL`.
+
+```bash
+# 1) Ollama (natif, accès GPU) + un modèle compatible outils (~8 Go VRAM)
+ollama serve
+ollama pull qwen2.5:7b        # ou llama3.1:8b
+
+# 2) le worker (relaie vers Ollama)
+pnpm start:python-worker      # écoute sur :8000
+
+# 3) l'app : dans apps/invoiceflow-ai/.env
+#    OLLAMA_WORKER_URL="http://localhost:8000"
+pnpm --filter @daromsart/invoiceflow-ai dev
+```
+
+Puis, en mode agent, choisir un modèle « (local) » dans le sélecteur. Le champ
+`OLLAMA_WORKER_URL` vide = provider local désactivé (il n'apparaît pas). Les
+petits modèles locaux savent appeler des outils mais restent moins fiables que
+Gemini/Claude sur les enchaînements complexes. Les ids de `AGENT_MODELS`
+(`modules/agent/models.ts`, provider `ollama`) doivent correspondre à des
+modèles réellement `ollama pull`és.
+
 **Dev local (sans Docker)** — le plus rapide pour itérer :
 
 ```bash

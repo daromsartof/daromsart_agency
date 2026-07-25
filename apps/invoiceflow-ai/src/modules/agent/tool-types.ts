@@ -50,6 +50,34 @@ export interface DashboardStatsOutput {
   enRetardCount: number;
 }
 
+export interface InvoiceLineLite {
+  description: string;
+  quantity: number;
+  unitPrice: string;
+  vatRate: number;
+  total: string;
+}
+
+/** Détail d'une facture + URL PDF (preview / téléchargement dans le chat). */
+export interface InvoiceDetailToolOutput {
+  found: boolean;
+  id?: string;
+  number?: string | null;
+  clientName?: string;
+  status?: string;
+  issueDate?: string | null;
+  dueDate?: string | null;
+  subtotal?: string;
+  total?: string;
+  reste?: string;
+  notes?: string | null;
+  lines?: InvoiceLineLite[];
+  /** Chemin app authentifié — iframe + lien download côté UI. */
+  pdfUrl?: string;
+  pdfFilename?: string;
+  message?: string;
+}
+
 export interface AskUserOutput {
   question: string;
   options: string[];
@@ -61,6 +89,8 @@ export const AGENT_TOOL_NAMES = [
   "listInvoices",
   "listQuotes",
   "getDashboardStats",
+  "getInvoiceDetail",
   "askUser",
+  "proposeCreateClient",
 ] as const;
 export type AgentToolName = (typeof AGENT_TOOL_NAMES)[number];

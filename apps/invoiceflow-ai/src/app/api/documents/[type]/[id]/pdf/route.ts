@@ -12,7 +12,7 @@ export const runtime = "nodejs";
 const SUPPORTED_TYPES = new Set(["devis", "factures"]);
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { type: string; id: string } },
 ) {
   const session = await requireSession();
@@ -32,10 +32,15 @@ export async function GET(
     return NextResponse.json({ error: "Introuvable" }, { status: 404 });
   }
 
+  const asDownload = request.nextUrl.searchParams.get("download") === "1";
+  const disposition = asDownload
+    ? `attachment; filename="${file.filename}"`
+    : `inline; filename="${file.filename}"`;
+
   return new NextResponse(new Uint8Array(file.buffer), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="${file.filename}"`,
+      "Content-Disposition": disposition,
     },
   });
 }

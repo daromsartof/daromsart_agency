@@ -20,6 +20,7 @@
   "dependencies": {
     "@ai-sdk/anthropic": "4.0.20",
     "@ai-sdk/google": "4.0.20",
+    "@ai-sdk/openai": "4.0.20",
     "@ai-sdk/react": "4.0.40",
     "@daromsart/auth": "workspace:*",
     "@daromsart/core": "workspace:*",
@@ -45,6 +46,7 @@
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "react-hook-form": "7.53.0",
+    "react-markdown": "9.0.3",
     "recharts": "3.10.0",
     "server-only": "^0.0.1",
     "svix": "1.98.0",

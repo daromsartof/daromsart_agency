@@ -2,10 +2,11 @@ import { convertToModelMessages, stepCountIs, streamText, type UIMessage } from 
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { getCurrentOrganizationId, getSession } from "@/modules/auth/session";
-import { isAgentModel } from "@/modules/agent/models";
+import { isAgentModel, providerApiKeyHint, agentModelProvider } from "@/modules/agent/models";
 import { replaceMessages } from "@/modules/agent/mutations";
 import { getConversation } from "@/modules/agent/queries";
 import { createAgentTools } from "@/modules/agent/tools";
+import { fillMissingToolResults } from "@/modules/agent/message-sanitize";
 import {
   SYSTEM_PROMPT,
   defaultAgentModel,
@@ -51,7 +52,7 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         error:
-          "Le mode agent n'est pas configuré. Ajoutez GOOGLE_GENERATIVE_AI_API_KEY (Gemini gratuit) ou ANTHROPIC_API_KEY dans .env.",
+          "Le mode agent n'est pas configuré. Ajoutez GOOGLE_GENERATIVE_AI_API_KEY, OPENAI_API_KEY ou ANTHROPIC_API_KEY dans .env.",
       },
       { status: 503 },
     );
@@ -84,12 +85,8 @@ export async function POST(req: Request) {
         : defaultAgentModel();
 
   if (!isModelConfigured(model)) {
-    const hint =
-      model.startsWith("gemini")
-        ? "GOOGLE_GENERATIVE_AI_API_KEY"
-        : "ANTHROPIC_API_KEY";
     return NextResponse.json(
-      { error: `Le modèle ${model} nécessite ${hint} dans .env.` },
+      { error: `Le modèle ${model} nécessite ${providerApiKeyHint(agentModelProvider(model))} dans .env.` },
       { status: 503 },
     );
   }
@@ -106,9 +103,14 @@ export async function POST(req: Request) {
     );
   }
 
+  // Comble tout tool-call resté sans résultat (ex. `askUser` laissé de côté)
+  // pour ne jamais planter avec MissingToolResultsError : l'agent redemande ou
+  // enchaîne plutôt que d'afficher une erreur.
+  const promptMessages = fillMissingToolResults(messages);
+
   let modelMessages;
   try {
-    modelMessages = await convertToModelMessages(messages);
+    modelMessages = await convertToModelMessages(promptMessages);
   } catch (err) {
     console.error("[agent/chat] convertToModelMessages", err);
     return NextResponse.json(

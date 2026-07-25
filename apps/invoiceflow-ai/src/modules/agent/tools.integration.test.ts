@@ -85,3 +85,15 @@ describe("createAgentTools — listInvoices robustesse cross-provider", () => {
     expect(out.total).toBe(0);
   });
 });
+
+describe("createAgentTools — garantie anti-écriture automatique (story 28)", () => {
+  it("les outils d'action humaine n'ont PAS d'execute (jamais déclenchés par le modèle)", () => {
+    const tools = createAgentTools(db, orgA) as Record<string, { execute?: unknown }>;
+    // proposeCreateClient et askUser sont résolus par un clic humain
+    // (addToolResult), jamais par le serveur → aucune écriture automatique.
+    expect(tools.proposeCreateClient.execute).toBeUndefined();
+    expect(tools.askUser.execute).toBeUndefined();
+    // Les outils de lecture, eux, s'exécutent bien côté serveur.
+    expect(typeof tools.listClients.execute).toBe("function");
+  });
+});

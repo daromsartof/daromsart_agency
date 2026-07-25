@@ -47,6 +47,11 @@ services:
       # Copilote agent — au moins une clé. Vide = désactivé.
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       GOOGLE_GENERATIVE_AI_API_KEY: ${GOOGLE_GENERATIVE_AI_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      # IA locale (Ollama/GPU) via le worker — opt-in (vide = désactivé).
+      # Pour l'activer : OLLAMA_WORKER_URL=http://python-worker:8000 (nom du
+      # service sur le réseau compose) + un Ollama joignable côté worker (ci-dessous).
+      OLLAMA_WORKER_URL: ${OLLAMA_WORKER_URL:-}
       # Compte administrateur créé automatiquement au premier démarrage
       # (migrations + bootstrap, voir `src/instrumentation.ts`) — sans effet
       # si un administrateur existe déjà (idempotent, y compris après un
@@ -74,6 +79,12 @@ services:
       # Toujours renseigner en prod — sans elle, l'API accepte les appels
       # sans authentification (voir services/python-worker/app/security.py).
       WORKER_API_KEY: ${WORKER_API_KEY:-change-me}
+      # IA locale : Ollama tourne sur l'HÔTE (accès GPU natif), le worker le
+      # relaie via la passerelle host. Ne concerne que si OLLAMA_WORKER_URL est activé.
+      WORKER_OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+    extra_hosts:
+      # Permet au conteneur d'atteindre l'Ollama de l'hôte (Linux).
+      - "host.docker.internal:host-gateway"
     ports:
       - "8000:8000"
 

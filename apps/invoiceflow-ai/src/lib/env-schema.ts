@@ -31,10 +31,15 @@ export const envSchema = z.object({
   SEED_ADMIN_PASSWORD: z.string().optional(),
 
   // Copilote agent (mode agent). Vide = provider désactivé.
-  // Au moins une des deux clés doit être renseignée pour activer le chat.
+  // Au moins une clé doit être renseignée pour activer le chat.
   ANTHROPIC_API_KEY: z.string().optional().default(""),
   // Clé Google AI Studio / Gemini (free tier) — https://aistudio.google.com/apikey
   GOOGLE_GENERATIVE_AI_API_KEY: z.string().optional().default(""),
+  // Clé OpenAI (GPT-5.4…) — https://platform.openai.com/api-keys
+  OPENAI_API_KEY: z.string().optional().default(""),
+  // IA locale (Ollama/GPU) via le worker Python. URL de base du worker
+  // (ex. http://localhost:8000). Vide = provider local désactivé.
+  OLLAMA_WORKER_URL: z.string().optional().default(""),
 });
 
 export type Env = z.infer<typeof envSchema>;
