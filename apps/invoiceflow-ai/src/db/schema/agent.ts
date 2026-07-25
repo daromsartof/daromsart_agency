@@ -17,7 +17,7 @@ export const agentConversations = pgTable("agent_conversations", {
     .references(() => user.id, { onDelete: "cascade" }),
 
   title: text("title").notNull().default("Nouvelle conversation"),
-  /** Modèle Claude utilisé (ex. claude-opus-4-8) — figé à la création, ajustable. */
+  /** Modèle LLM utilisé (ex. gemini-2.5-flash, claude-opus-4-8). */
   model: text("model").notNull(),
 
   createdAt: timestamp("created_at").notNull().defaultNow(),
