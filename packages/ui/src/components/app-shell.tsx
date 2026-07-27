@@ -39,14 +39,16 @@ const DefaultLink = ({
   href,
   className,
   onClick,
+  title,
   children,
 }: {
   href: string;
   className?: string;
   onClick?: () => void;
+  title?: string;
   children?: React.ReactNode;
 }) => (
-  <a href={href} className={className} onClick={onClick}>
+  <a href={href} className={className} onClick={onClick} title={title}>
     {children}
   </a>
 );
@@ -55,6 +57,8 @@ export interface AppShellProps {
   sections: NavSection[];
   activeHref?: string;
   logo?: React.ReactNode;
+  /** Logo compact (icône seule) quand la sidebar est réduite. */
+  logoCollapsed?: React.ReactNode;
   user?: { name?: string | null; email?: string | null };
   /** Contenu du menu utilisateur (dropdown) rendu dans la topbar. */
   userMenu?: React.ReactNode;
@@ -76,17 +80,19 @@ function SidebarNav({
   activeHref,
   linkComponent: Link,
   onNavigate,
+  collapsed,
 }: {
   sections: NavSection[];
   activeHref?: string;
   linkComponent: LinkComponent;
   onNavigate?: () => void;
+  collapsed?: boolean;
 }) {
   return (
-    <nav className="flex flex-col gap-6 px-3 py-4">
+    <nav className={cn("flex flex-col py-4", collapsed ? "gap-4 px-2" : "gap-6 px-3")}>
       {sections.map((section, index) => (
         <div key={section.label ?? index} className="space-y-1">
-          {section.label ? (
+          {section.label && !collapsed ? (
             <p className="px-3 pb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
               {section.label}
             </p>
@@ -99,15 +105,20 @@ function SidebarNav({
                 key={item.href}
                 href={item.href}
                 onClick={onNavigate}
+                title={collapsed ? item.label : undefined}
+                aria-label={item.label}
                 className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                  "flex items-center rounded-lg text-sm font-medium transition-colors",
+                  collapsed
+                    ? "justify-center px-0 py-2.5"
+                    : "gap-3 px-3 py-2",
                   active
                     ? "bg-primary/10 text-primary"
                     : "text-foreground/70 hover:bg-accent hover:text-foreground",
                 )}
               >
-                {Icon ? <Icon className="h-5 w-5" /> : null}
-                {item.label}
+                {Icon ? <Icon className="h-5 w-5 shrink-0" /> : null}
+                {!collapsed ? <span className="truncate">{item.label}</span> : null}
               </Link>
             );
           })}
@@ -121,6 +132,7 @@ function AppShell({
   sections,
   activeHref,
   logo,
+  logoCollapsed,
   user,
   userMenu,
   topbarActions,
@@ -151,24 +163,34 @@ function AppShell({
     }
   }, [sidebarOpen, sidebarReady]);
 
+  const collapsedLogo = logoCollapsed ?? logo;
+
   return (
     // h-svh + overflow-hidden : sidebar et topbar restent fixes ; seul <main> scroll.
     <div className="flex h-svh overflow-hidden bg-background">
-      {/* Sidebar desktop */}
+      {/* Sidebar desktop — réduite = rail d'icônes cliquables */}
       <aside
         className={cn(
-          "hidden h-full w-64 shrink-0 flex-col border-r bg-card lg:flex",
-          !sidebarOpen && "lg:hidden",
+          "hidden h-full shrink-0 flex-col border-r bg-card transition-[width] duration-200 lg:flex",
+          sidebarOpen ? "w-64" : "w-16",
         )}
       >
-        <div className="flex h-16 shrink-0 items-center px-5">
-          {logo ?? <span className="text-lg font-semibold">Daromsart Système</span>}
+        <div
+          className={cn(
+            "flex h-16 shrink-0 items-center",
+            sidebarOpen ? "px-5" : "justify-center px-2",
+          )}
+        >
+          {sidebarOpen
+            ? (logo ?? <span className="text-lg font-semibold">Daromsart Système</span>)
+            : collapsedLogo}
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
           <SidebarNav
             sections={sections}
             activeHref={activeHref}
             linkComponent={linkComponent}
+            collapsed={!sidebarOpen}
           />
         </div>
       </aside>
@@ -211,7 +233,7 @@ function AppShell({
             variant="ghost"
             size="icon"
             className="hidden lg:inline-flex"
-            aria-label={sidebarOpen ? "Masquer le menu" : "Afficher le menu"}
+            aria-label={sidebarOpen ? "Réduire le menu" : "Agrandir le menu"}
             aria-pressed={sidebarOpen}
             onClick={() => setSidebarOpen((open) => !open)}
           >

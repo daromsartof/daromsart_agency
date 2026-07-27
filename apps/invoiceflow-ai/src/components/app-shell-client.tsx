@@ -41,6 +41,23 @@ export function AppShellClient({ user, children }: AppShellClientProps) {
           />
         </Link>
       }
+      logoCollapsed={
+        <Link
+          href="/"
+          aria-label="Daroms'Art Systems"
+          className="inline-flex items-center justify-center"
+          title="Daroms'Art Systems"
+        >
+          <Image
+            src="/logo/qr-default-icon.png"
+            alt="Daroms'Art Systems"
+            width={128}
+            height={128}
+            priority
+            className="h-8 w-8"
+          />
+        </Link>
+      }
       topbarActions={
         <>
           <Button asChild variant="outline" size="sm" className="gap-2">
